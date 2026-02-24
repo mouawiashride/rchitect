@@ -25,6 +25,14 @@
   },
   "author": "Mouawia Sharedi <mooawia12@windowslive.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mouawiashride/rchitect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mouawiashride/rchitect/issues"
+  },
+  "homepage": "https://github.com/mouawiashride/rchitect#readme",
   "files": [
     "src",
     "README.md",
