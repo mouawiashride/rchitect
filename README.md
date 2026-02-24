@@ -570,3 +570,7 @@ Rchitect applies name transformations automatically:
 ## License
 
 MIT
+
+---
+
+Made by [Mouawia Sharedi](https://mouawiasharedi.vercel.app/)

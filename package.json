@@ -23,7 +23,7 @@
   "scripts": {
     "test": "jest --verbose"
   },
-  "author": "Mouawia Sharedi <mooawia12@windowslive.com>",
+  "author": "Mouawia Sharedi <mooawia12@windowslive.com> (https://mouawiasharedi.vercel.app/)",
   "license": "MIT",
   "repository": {
     "type": "git",
