@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# npm publish artifact
+*.tgz
+
+# npm credentials — NEVER commit this
+.npmrc
+
+# TypeScript build output
+dist/
+
+# Test temp directories
+tests/.tmp-*/
+
+# Test coverage
+coverage/
+
+# Claude Code local settings
+.claude/
+
+# Local task settings
+tasks/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
