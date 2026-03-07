@@ -5,11 +5,17 @@ const inquirer = require('inquirer');
 const reactStructures = require('../structures/react');
 const nextjsStructures = require('../structures/nextjs');
 const { validateName } = require('../utils/validate');
-const {
-  getExtensions, componentTemplate, hookTemplate, pageTemplate, serviceTemplate,
-  contextTemplate, storeTemplate, typeTemplate, apiTemplate, featureTemplate,
-} = require('../utils/templates');
 const { updateBarrel } = require('../utils/barrel');
+
+function loadTemplates(cwd) {
+  const custom = path.join(cwd, '.rchitect', 'templates.js');
+  if (fs.pathExistsSync(custom)) {
+    try { return require(custom); } catch {
+      console.log(chalk.yellow('  Warning: .rchitect/templates.js failed to load, using built-in templates.'));
+    }
+  }
+  return require('../utils/templates');
+}
 
 const SUPPORTED_TYPES = ['component', 'hook', 'page', 'service', 'context', 'store', 'type', 'api', 'feature'];
 
@@ -41,14 +47,16 @@ async function writeFiles(files, targetDir, cwd) {
   }
 }
 
-async function withBarrel(parentDir, resourceName, config, cwd) {
+async function withBarrel(parentDir, resourceName, config, cwd, templates) {
+  const { getExtensions } = templates;
   const { scriptExt } = getExtensions(config);
   const result = await updateBarrel(parentDir, resourceName, scriptExt, cwd);
   const icon = result.action === 'skipped' ? chalk.gray('  ~barrel ') : chalk.blue('  barrel  ');
   console.log(icon + chalk.gray(result.path) + chalk.gray(` (${result.action})`));
 }
 
-async function addComponent(name, config, structure, cwd) {
+async function addComponent(name, config, structure, cwd, templates) {
+  const { componentTemplate } = templates;
   validateName(name, 'component');
 
   let componentDir;
@@ -80,11 +88,12 @@ async function addComponent(name, config, structure, cwd) {
 
   const files = componentTemplate(name, config, level);
   await writeFiles(files, componentDir, cwd);
-  await withBarrel(path.dirname(componentDir), name, config, cwd);
+  await withBarrel(path.dirname(componentDir), name, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Component "${name}" created successfully!\n`));
 }
 
-async function addHook(name, config, structure, cwd) {
+async function addHook(name, config, structure, cwd, templates) {
+  const { hookTemplate } = templates;
   validateName(name, 'hook');
 
   const { files, resolvedName } = hookTemplate(name, config);
@@ -96,11 +105,12 @@ async function addHook(name, config, structure, cwd) {
   }
 
   await writeFiles(files, hookDir, cwd);
-  await withBarrel(path.dirname(hookDir), resolvedName, config, cwd);
+  await withBarrel(path.dirname(hookDir), resolvedName, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Hook "${resolvedName}" created successfully!\n`));
 }
 
-async function addPage(name, config, structure, cwd) {
+async function addPage(name, config, structure, cwd, templates) {
+  const { pageTemplate } = templates;
   validateName(name, 'page');
 
   const files = pageTemplate(name, config);
@@ -112,11 +122,12 @@ async function addPage(name, config, structure, cwd) {
   }
 
   await writeFiles(files, pageDir, cwd);
-  await withBarrel(path.dirname(pageDir), name, config, cwd);
+  await withBarrel(path.dirname(pageDir), name, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Page "${name}" created successfully!\n`));
 }
 
-async function addService(name, config, structure, cwd) {
+async function addService(name, config, structure, cwd, templates) {
+  const { serviceTemplate } = templates;
   validateName(name, 'service');
 
   const { files, resolvedName } = serviceTemplate(name, config);
@@ -128,11 +139,12 @@ async function addService(name, config, structure, cwd) {
   }
 
   await writeFiles(files, serviceDir, cwd);
-  await withBarrel(path.dirname(serviceDir), resolvedName, config, cwd);
+  await withBarrel(path.dirname(serviceDir), resolvedName, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Service "${resolvedName}" created successfully!\n`));
 }
 
-async function addContext(name, config, structure, cwd) {
+async function addContext(name, config, structure, cwd, templates) {
+  const { contextTemplate } = templates;
   validateName(name, 'context');
 
   const { files, resolvedName } = contextTemplate(name, config);
@@ -144,11 +156,12 @@ async function addContext(name, config, structure, cwd) {
   }
 
   await writeFiles(files, contextDir, cwd);
-  await withBarrel(path.dirname(contextDir), resolvedName, config, cwd);
+  await withBarrel(path.dirname(contextDir), resolvedName, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Context "${resolvedName}" created successfully!\n`));
 }
 
-async function addStore(name, config, structure, cwd) {
+async function addStore(name, config, structure, cwd, templates) {
+  const { storeTemplate } = templates;
   validateName(name, 'store');
 
   const { files, resolvedName } = storeTemplate(name, config);
@@ -160,11 +173,12 @@ async function addStore(name, config, structure, cwd) {
   }
 
   await writeFiles(files, storeDir, cwd);
-  await withBarrel(path.dirname(storeDir), resolvedName, config, cwd);
+  await withBarrel(path.dirname(storeDir), resolvedName, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Store "${resolvedName}" created successfully!\n`));
 }
 
-async function addType(name, config, structure, cwd) {
+async function addType(name, config, structure, cwd, templates) {
+  const { typeTemplate } = templates;
   validateName(name, 'type');
 
   const { files, resolvedName } = typeTemplate(name, config);
@@ -174,7 +188,8 @@ async function addType(name, config, structure, cwd) {
   console.log(chalk.bold.green(`\n  Type "${resolvedName}" created successfully!\n`));
 }
 
-async function addApi(name, config, structure, cwd) {
+async function addApi(name, config, structure, cwd, templates) {
+  const { apiTemplate } = templates;
   validateName(name, 'api');
 
   if (config.framework !== 'nextjs') {
@@ -194,7 +209,8 @@ async function addApi(name, config, structure, cwd) {
   console.log(chalk.bold.green(`\n  API route "app/api/${resolvedName}/route" created successfully!\n`));
 }
 
-async function addFeature(name, config, structure, cwd) {
+async function addFeature(name, config, structure, cwd, templates) {
+  const { featureTemplate } = templates;
   validateName(name, 'feature');
 
   const { files, resolvedName } = featureTemplate(name, config);
@@ -219,17 +235,18 @@ async function addCommand(type, name) {
   const cwd = process.cwd();
   const config = await loadConfig(cwd);
   const structure = getStructure(config);
+  const templates = loadTemplates(cwd);
 
   switch (type) {
-    case 'component': return addComponent(name, config, structure, cwd);
-    case 'hook':      return addHook(name, config, structure, cwd);
-    case 'page':      return addPage(name, config, structure, cwd);
-    case 'service':   return addService(name, config, structure, cwd);
-    case 'context':   return addContext(name, config, structure, cwd);
-    case 'store':     return addStore(name, config, structure, cwd);
-    case 'type':      return addType(name, config, structure, cwd);
-    case 'api':       return addApi(name, config, structure, cwd);
-    case 'feature':   return addFeature(name, config, structure, cwd);
+    case 'component': return addComponent(name, config, structure, cwd, templates);
+    case 'hook':      return addHook(name, config, structure, cwd, templates);
+    case 'page':      return addPage(name, config, structure, cwd, templates);
+    case 'service':   return addService(name, config, structure, cwd, templates);
+    case 'context':   return addContext(name, config, structure, cwd, templates);
+    case 'store':     return addStore(name, config, structure, cwd, templates);
+    case 'type':      return addType(name, config, structure, cwd, templates);
+    case 'api':       return addApi(name, config, structure, cwd, templates);
+    case 'feature':   return addFeature(name, config, structure, cwd, templates);
   }
 }
 

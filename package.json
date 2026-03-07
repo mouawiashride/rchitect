@@ -1,6 +1,6 @@
 {
   "name": "rchitect",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Scaffold React and Next.js projects with popular architecture patterns",
   "main": "src/index.js",
   "bin": {

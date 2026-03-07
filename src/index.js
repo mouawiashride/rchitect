@@ -9,6 +9,11 @@ const configCommand = require('./commands/config');
 const removeCommand = require('./commands/remove');
 const renameCommand = require('./commands/rename');
 const doctorCommand = require('./commands/doctor');
+const auditCommand = require('./commands/audit');
+const scaffoldCommand = require('./commands/scaffold');
+const syncCommand = require('./commands/sync');
+const migrateCommand = require('./commands/migrate');
+const ejectCommand = require('./commands/eject');
 
 program
   .name('rchitect')
@@ -60,5 +65,33 @@ program
   .command('doctor')
   .description('Check project health against the stored configuration')
   .action(doctorCommand);
+
+program
+  .command('audit')
+  .description('Scan source directories for naming and barrel violations')
+  .action(auditCommand);
+
+program
+  .command('scaffold')
+  .description('Batch-create resources from a JSON manifest file')
+  .argument('<manifest>', 'Path to JSON manifest file')
+  .action(scaffoldCommand);
+
+program
+  .command('sync')
+  .description('Rescan resource directories and add missing barrel exports')
+  .action(syncCommand);
+
+program
+  .command('migrate')
+  .description('Move resource directories to a new architecture pattern layout')
+  .argument('<newPattern>', 'Target pattern (atomic-design, feature-based, domain-driven, mvc-like)')
+  .option('--apply', 'Execute the migration (default is dry-run)')
+  .action(migrateCommand);
+
+program
+  .command('eject')
+  .description('Copy built-in templates to .rchitect/templates.js for customization')
+  .action(ejectCommand);
 
 program.parse();
