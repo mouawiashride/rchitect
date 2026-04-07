@@ -4,6 +4,9 @@ const path = require('path');
 const inquirer = require('inquirer');
 const reactStructures = require('../structures/react');
 const nextjsStructures = require('../structures/nextjs');
+const vueStructures = require('../structures/vue');
+const svelteStructures = require('../structures/svelte');
+const solidjsStructures = require('../structures/solidjs');
 const { validateName } = require('../utils/validate');
 const { updateBarrel } = require('../utils/barrel');
 
@@ -38,7 +41,14 @@ async function loadConfig(cwd) {
 }
 
 function getStructure(config) {
-  const structures = config.framework === 'react' ? reactStructures : nextjsStructures;
+  const map = {
+    react: reactStructures,
+    nextjs: nextjsStructures,
+    vue: vueStructures,
+    svelte: svelteStructures,
+    solidjs: solidjsStructures,
+  };
+  const structures = map[config.framework] || reactStructures;
   const structure = structures[config.pattern];
   if (!structure) {
     console.log(chalk.red('\n  Error: Unknown pattern in config.\n'));
@@ -83,7 +93,7 @@ async function addComponent(name, config, structure, cwd, templates, opts) {
         { name: 'Molecule', value: 'molecule' },
         { name: 'Organism', value: 'organism' },
         { name: 'Template', value: 'template' },
-        ...(config.framework === 'react' ? [{ name: 'Page', value: 'page' }] : []),
+        ...(config.framework === 'react' || config.framework === 'vue' || config.framework === 'svelte' || config.framework === 'solidjs' ? [{ name: 'Page', value: 'page' }] : []),
       ],
     }]);
     level = answer.level;

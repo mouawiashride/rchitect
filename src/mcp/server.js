@@ -11,6 +11,9 @@ const { z } = require('zod');
 
 const reactStructures  = require('../structures/react');
 const nextjsStructures = require('../structures/nextjs');
+const vueStructures    = require('../structures/vue');
+const svelteStructures = require('../structures/svelte');
+const solidjsStructures = require('../structures/solidjs');
 const { toCamelCase, validateName }  = require('../utils/validate');
 const {
   getExtensions, componentTemplate, hookTemplate, pageTemplate, serviceTemplate,
@@ -87,9 +90,13 @@ function handleGetProjectConfig(cwd) {
       : 'CSS — style files use .module.css extension.';
 
   const explanation = {
-    framework: config.framework === 'nextjs'
-      ? 'Next.js — App Router project. API routes and App Router resources (layout, loading, error, middleware) are supported.'
-      : 'React — standard React project. No server-side routing.',
+    framework: {
+      react:   'React — standard React project. Component-based UI with hooks, context, and Zustand stores.',
+      nextjs:  'Next.js — App Router project. API routes and App Router resources (layout, loading, error, middleware) are supported.',
+      vue:     'Vue 3 — component-based framework with Composition API. Uses composables (useXxx), Pinia stores, and .vue SFCs.',
+      svelte:  'Svelte — reactive UI framework with .svelte single-file components, writable stores, and composables.',
+      solidjs: 'SolidJS — fine-grained reactive framework with JSX, createSignal-based hooks, and solid-js/store.',
+    }[config.framework] || config.framework,
     pattern: PATTERN_DESCRIPTIONS[config.pattern] || `Unknown pattern: ${config.pattern}`,
     language: config.language === 'typescript'
       ? 'TypeScript — files use .tsx / .ts extensions.'
@@ -120,7 +127,14 @@ function handleGetArchitectureGuide(cwd) {
   }
 
   const config = fs.readJsonSync(configPath);
-  const structures = config.framework === 'react' ? reactStructures : nextjsStructures;
+  const structureMap = {
+    react: reactStructures,
+    nextjs: nextjsStructures,
+    vue: vueStructures,
+    svelte: svelteStructures,
+    solidjs: solidjsStructures,
+  };
+  const structures = structureMap[config.framework] || reactStructures;
   const structure  = structures[config.pattern];
 
   if (!structure) {
@@ -185,7 +199,14 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
   }
 
   const config    = fs.readJsonSync(configPath);
-  const structures = config.framework === 'react' ? reactStructures : nextjsStructures;
+  const structureMap2 = {
+    react: reactStructures,
+    nextjs: nextjsStructures,
+    vue: vueStructures,
+    svelte: svelteStructures,
+    solidjs: solidjsStructures,
+  };
+  const structures = structureMap2[config.framework] || reactStructures;
   const structure  = structures[config.pattern];
 
   const { compExt, scriptExt, styleExt } = getFileExtensions(config);
@@ -213,9 +234,11 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
         : structure.componentPath(name);
       directory    = `${basePath}/${name}`;
       resolvedName = name;
+      const hasSeparateStyleFile = !isTailwind && config.framework !== 'vue' && config.framework !== 'svelte';
+      const testExt = (config.framework === 'vue' || config.framework === 'svelte') ? scriptExt : compExt;
       files = [`${name}.${compExt}`, `index.${scriptExt}`];
-      if (!isTailwind) files.splice(1, 0, `${name}.module.${styleExt}`);
-      if (config.withTests) files.push(`${name}.test.${compExt}`);
+      if (hasSeparateStyleFile) files.splice(1, 0, `${name}.module.${styleExt}`);
+      if (config.withTests) files.push(`${name}.test.${testExt}`);
       break;
     }
 
@@ -233,9 +256,11 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
       const pageName = `${name}Page`;
       directory    = `${structure.pagePath()}/${name}`;
       resolvedName = pageName;
+      const pageHasSeparateStyle = !isTailwind && config.framework !== 'vue' && config.framework !== 'svelte';
+      const pageTestExt = (config.framework === 'vue' || config.framework === 'svelte') ? scriptExt : compExt;
       files = [`${pageName}.${compExt}`, `index.${scriptExt}`];
-      if (!isTailwind) files.splice(1, 0, `${pageName}.module.${styleExt}`);
-      if (config.withTests) files.push(`${pageName}.test.${compExt}`);
+      if (pageHasSeparateStyle) files.splice(1, 0, `${pageName}.module.${styleExt}`);
+      if (config.withTests) files.push(`${pageName}.test.${pageTestExt}`);
       note = '"Page" suffix added automatically.';
       break;
     }
@@ -380,7 +405,14 @@ async function handleCreateResource({ type, name, atomicLevel, segment }, cwd) {
   }
 
   const config    = fs.readJsonSync(configPath);
-  const structures = config.framework === 'react' ? reactStructures : nextjsStructures;
+  const structureMap3 = {
+    react: reactStructures,
+    nextjs: nextjsStructures,
+    vue: vueStructures,
+    svelte: svelteStructures,
+    solidjs: solidjsStructures,
+  };
+  const structures = structureMap3[config.framework] || reactStructures;
   const structure  = structures[config.pattern];
   const { scriptExt } = getFileExtensions(config);
   const created = [];

@@ -4,6 +4,9 @@ const fs = require('fs-extra');
 const path = require('path');
 const reactStructures = require('../structures/react');
 const nextjsStructures = require('../structures/nextjs');
+const vueStructures = require('../structures/vue');
+const svelteStructures = require('../structures/svelte');
+const solidjsStructures = require('../structures/solidjs');
 const { detectFramework } = require('../utils/detect');
 const { generatePathAliases } = require('../utils/pathAlias');
 
@@ -24,12 +27,14 @@ async function initCommand(options) {
   const detected = await detectFramework(cwd);
   let framework;
 
+  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS' };
+
   if (detected) {
-    console.log(chalk.green('  Detected: ') + chalk.white(detected === 'nextjs' ? 'Next.js' : 'React') + '\n');
+    console.log(chalk.green('  Detected: ') + chalk.white(frameworkLabels[detected] || detected) + '\n');
     const { confirmFramework } = await inquirer.prompt([{
       type: 'confirm',
       name: 'confirmFramework',
-      message: `Use ${detected === 'nextjs' ? 'Next.js' : 'React'} as the framework?`,
+      message: `Use ${frameworkLabels[detected] || detected} as the framework?`,
       default: true,
     }]);
     if (confirmFramework) framework = detected;
@@ -43,6 +48,9 @@ async function initCommand(options) {
       choices: [
         { name: 'React', value: 'react' },
         { name: 'Next.js', value: 'nextjs' },
+        { name: 'Vue 3', value: 'vue' },
+        { name: 'Svelte / SvelteKit', value: 'svelte' },
+        { name: 'SolidJS', value: 'solidjs' },
       ],
     }]);
     framework = answer.framework;
@@ -118,7 +126,14 @@ async function initCommand(options) {
   const setupAliases = answers.pathAliases || false;
   const dryRun = options.dryRun || false;
 
-  const structures = framework === 'react' ? reactStructures : nextjsStructures;
+  const structureMap = {
+    react: reactStructures,
+    nextjs: nextjsStructures,
+    vue: vueStructures,
+    svelte: svelteStructures,
+    solidjs: solidjsStructures,
+  };
+  const structures = structureMap[framework] || reactStructures;
   const structure = structures[pattern];
 
   if (!structure) {
@@ -174,21 +189,25 @@ async function initCommand(options) {
   } else {
     console.log(chalk.bold.green('\n  Done! Architecture folders are ready.\n'));
     console.log(chalk.gray('  Add resources with:'));
+    const hookLabel = (framework === 'vue' || framework === 'svelte') ? 'composable' : 'hook';
     console.log(chalk.cyan('    rchitect add component <Name>'));
-    console.log(chalk.cyan('    rchitect add hook <Name>'));
+    console.log(chalk.cyan(`    rchitect add ${hookLabel} <Name>`));
     console.log(chalk.cyan('    rchitect add page <Name>'));
     console.log(chalk.cyan('    rchitect add service <Name>'));
     console.log(chalk.cyan('    rchitect add context <Name>'));
     console.log(chalk.cyan('    rchitect add store <Name>'));
     console.log(chalk.cyan('    rchitect add type <Name>'));
-    console.log(chalk.cyan('    rchitect add api <Name>         (Next.js only)'));
     console.log(chalk.cyan('    rchitect add feature <Name>'));
-    console.log(chalk.cyan('    rchitect add layout <segment>   (Next.js only)'));
-    console.log(chalk.cyan('    rchitect add loading <segment>  (Next.js only)'));
-    console.log(chalk.cyan('    rchitect add error <segment>    (Next.js only)'));
-    console.log(chalk.cyan('    rchitect add not-found <segment>(Next.js only)'));
-    console.log(chalk.cyan('    rchitect add middleware          (Next.js only)'));
-    console.log(chalk.cyan('    rchitect add server-action <Name>(Next.js only)\n'));
+    if (framework === 'nextjs') {
+      console.log(chalk.cyan('    rchitect add api <Name>         (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add layout <segment>   (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add loading <segment>  (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add error <segment>    (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add not-found <segment>(Next.js only)'));
+      console.log(chalk.cyan('    rchitect add middleware          (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add server-action <Name>(Next.js only)'));
+    }
+    console.log('');
   }
 }
 

@@ -16,6 +16,9 @@ async function detectFramework(cwd) {
 
   if (allDeps['next']) return 'nextjs';
   if (allDeps['react']) return 'react';
+  if (allDeps['vue']) return 'vue';
+  if (allDeps['svelte'] || allDeps['@sveltejs/kit']) return 'svelte';
+  if (allDeps['solid-js']) return 'solidjs';
 
   return null;
 }
