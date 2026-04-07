@@ -14,6 +14,7 @@ const scaffoldCommand = require('./commands/scaffold');
 const syncCommand = require('./commands/sync');
 const migrateCommand = require('./commands/migrate');
 const ejectCommand = require('./commands/eject');
+const importCommand = require('./commands/import');
 
 program
   .name('rchitect')
@@ -29,8 +30,9 @@ program
 program
   .command('add')
   .description('Add a resource to the project')
-  .argument('<type>', 'Type of resource (component, hook, page, service, context, store, type, api, feature)')
-  .argument('<name>', 'Name of the resource (PascalCase)')
+  .argument('<type>', 'Type of resource (component, hook, page, service, context, store, type, api, feature, layout, loading, error, not-found, middleware, server-action)')
+  .argument('[name]', 'Name of the resource (PascalCase), or route segment for App Router types')
+  .option('--story', 'Also generate a Storybook story file (component only)')
   .action(addCommand);
 
 program
@@ -42,7 +44,7 @@ program
   .command('config')
   .description('Update a project config setting')
   .argument('<action>', 'Action to perform (set)')
-  .argument('<key>', 'Config key to update (language, styling, withTests, useClient, pattern)')
+  .argument('<key>', 'Config key to update (language, styling, withTests, useClient, pattern, testing)')
   .argument('<value>', 'New value for the key')
   .action(configCommand);
 
@@ -93,5 +95,10 @@ program
   .command('eject')
   .description('Copy built-in templates to .rchitect/templates.js for customization')
   .action(ejectCommand);
+
+program
+  .command('import')
+  .description('Detect an existing project\'s structure and generate .rchitect.json')
+  .action(importCommand);
 
 program.parse();

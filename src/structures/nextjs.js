@@ -30,6 +30,9 @@ const structures = {
     typePath: () => 'types',
     featurePath: () => 'features',
     apiPath: () => 'app/api',
+    appRouterPath: (segment) => segment ? `app/${segment}` : 'app',
+    serverActionPath: () => 'app/actions',
+    middlewarePath: () => '',
   },
 
   'feature-based': {
@@ -53,6 +56,9 @@ const structures = {
     typePath: () => 'types',
     featurePath: () => 'features',
     apiPath: () => 'app/api',
+    appRouterPath: (segment) => segment ? `app/${segment}` : 'app',
+    serverActionPath: () => 'app/actions',
+    middlewarePath: () => '',
   },
 
   'domain-driven': {
@@ -76,6 +82,9 @@ const structures = {
     typePath: () => 'shared/types',
     featurePath: () => 'domains',
     apiPath: () => 'app/api',
+    appRouterPath: (segment) => segment ? `app/${segment}` : 'app',
+    serverActionPath: () => 'app/actions',
+    middlewarePath: () => '',
   },
 
   'mvc-like': {
@@ -101,6 +110,9 @@ const structures = {
     typePath: () => 'types',
     featurePath: () => 'features',
     apiPath: () => 'app/api',
+    appRouterPath: (segment) => segment ? `app/${segment}` : 'app',
+    serverActionPath: () => 'app/actions',
+    middlewarePath: () => '',
   },
 };
 

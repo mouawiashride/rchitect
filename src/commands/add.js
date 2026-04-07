@@ -17,7 +17,16 @@ function loadTemplates(cwd) {
   return require('../utils/templates');
 }
 
-const SUPPORTED_TYPES = ['component', 'hook', 'page', 'service', 'context', 'store', 'type', 'api', 'feature'];
+const SUPPORTED_TYPES = [
+  'component', 'hook', 'page', 'service', 'context', 'store', 'type', 'api', 'feature',
+  'layout', 'loading', 'error', 'not-found', 'middleware', 'server-action',
+];
+
+// Types that require a route segment (lowercase) rather than PascalCase name
+const SEGMENT_TYPES = ['layout', 'loading', 'error', 'not-found'];
+
+// Types that require Next.js
+const NEXTJS_ONLY = ['api', 'layout', 'loading', 'error', 'not-found', 'middleware', 'server-action'];
 
 async function loadConfig(cwd) {
   const configPath = path.join(cwd, '.rchitect.json');
@@ -55,8 +64,10 @@ async function withBarrel(parentDir, resourceName, config, cwd, templates) {
   console.log(icon + chalk.gray(result.path) + chalk.gray(` (${result.action})`));
 }
 
-async function addComponent(name, config, structure, cwd, templates) {
-  const { componentTemplate } = templates;
+// ── Standard resource handlers ────────────────────────────────────────────────
+
+async function addComponent(name, config, structure, cwd, templates, opts) {
+  const { componentTemplate, storyTemplate } = templates;
   validateName(name, 'component');
 
   let componentDir;
@@ -87,6 +98,9 @@ async function addComponent(name, config, structure, cwd, templates) {
   }
 
   const files = componentTemplate(name, config, level);
+  if (opts && opts.story && storyTemplate) {
+    Object.assign(files, storyTemplate(name, config));
+  }
   await writeFiles(files, componentDir, cwd);
   await withBarrel(path.dirname(componentDir), name, config, cwd, templates);
   console.log(chalk.bold.green(`\n  Component "${name}" created successfully!\n`));
@@ -225,28 +239,138 @@ async function addFeature(name, config, structure, cwd, templates) {
   console.log(chalk.bold.green(`\n  Feature "${resolvedName}" scaffolded successfully!\n`));
 }
 
-async function addCommand(type, name) {
+// ── Next.js App Router handlers ───────────────────────────────────────────────
+
+function validateSegment(name) {
+  if (!name || !name.trim()) {
+    console.log(chalk.red('\n  Error: Route segment name is required.\n'));
+    process.exit(1);
+  }
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(name)) {
+    console.log(chalk.red(`\n  Error: Route segment "${name}" must be lowercase alphanumeric (hyphens/underscores allowed).\n`));
+    process.exit(1);
+  }
+}
+
+const APP_ROUTER_TEMPLATE_MAP = {
+  layout: 'layoutTemplate',
+  loading: 'loadingTemplate',
+  error: 'errorTemplate',
+  'not-found': 'notFoundTemplate',
+};
+
+async function addAppRouterFile(name, type, config, cwd, templates) {
+  const templateFn = templates[APP_ROUTER_TEMPLATE_MAP[type]];
+
+  if (!templateFn) {
+    console.log(chalk.red(`\n  Error: No template found for type "${type}".\n`));
+    process.exit(1);
+  }
+
+  validateSegment(name);
+
+  const targetDir = path.join(cwd, 'app', name);
+  const { files } = templateFn(name, config);
+
+  const firstFile = Object.keys(files)[0];
+  if (await fs.pathExists(path.join(targetDir, firstFile))) {
+    console.log(chalk.red(`\n  Error: ${type} for segment "${name}" already exists.\n`));
+    process.exit(1);
+  }
+
+  await writeFiles(files, targetDir, cwd);
+  console.log(chalk.bold.green(`\n  ${type} for segment "${name}" created successfully!\n`));
+}
+
+async function addMiddleware(config, cwd, templates) {
+  const { middlewareTemplate } = templates;
+
+  if (config.framework !== 'nextjs') {
+    console.log(chalk.red('\n  Error: Middleware is only supported for Next.js projects.\n'));
+    process.exit(1);
+  }
+
+  const { files, resolvedName } = middlewareTemplate(config);
+  const firstFile = Object.keys(files)[0];
+
+  if (await fs.pathExists(path.join(cwd, firstFile))) {
+    console.log(chalk.red('\n  Error: middleware file already exists at project root.\n'));
+    process.exit(1);
+  }
+
+  await writeFiles(files, cwd, cwd);
+  console.log(chalk.bold.green('\n  Middleware created successfully!\n'));
+}
+
+async function addServerAction(name, config, cwd, templates) {
+  const { serverActionTemplate } = templates;
+  validateName(name, 'server-action');
+
+  if (config.framework !== 'nextjs') {
+    console.log(chalk.red('\n  Error: Server Actions are only supported for Next.js projects.\n'));
+    process.exit(1);
+  }
+
+  const { files, resolvedName } = serverActionTemplate(name, config);
+  const targetDir = path.join(cwd, 'app', 'actions');
+
+  const firstFile = Object.keys(files)[0];
+  if (await fs.pathExists(path.join(targetDir, firstFile))) {
+    console.log(chalk.red(`\n  Error: Server action "${resolvedName}" already exists.\n`));
+    process.exit(1);
+  }
+
+  await writeFiles(files, targetDir, cwd);
+  console.log(chalk.bold.green(`\n  Server action "${resolvedName}" created successfully!\n`));
+}
+
+// ── Main dispatcher ───────────────────────────────────────────────────────────
+
+async function addCommand(type, name, cmd) {
   if (!SUPPORTED_TYPES.includes(type)) {
     console.log(chalk.red(`\n  Error: Unknown type "${type}".`));
     console.log(chalk.gray(`  Supported types: ${SUPPORTED_TYPES.join(', ')}\n`));
     process.exit(1);
   }
 
+  // middleware doesn't need a name; all others do
+  if (type !== 'middleware' && !name) {
+    console.log(chalk.red(`\n  Error: Name is required for "${type}".\n`));
+    process.exit(1);
+  }
+
+  // Validate Next.js-only types early
+  if (NEXTJS_ONLY.includes(type)) {
+    const cwd = process.cwd();
+    const config = await loadConfig(cwd);
+    if (config.framework !== 'nextjs') {
+      console.log(chalk.red(`\n  Error: "${type}" is only supported for Next.js projects.\n`));
+      process.exit(1);
+    }
+  }
+
+  const opts = cmd && typeof cmd.opts === 'function' ? cmd.opts() : (cmd || {});
   const cwd = process.cwd();
   const config = await loadConfig(cwd);
   const structure = getStructure(config);
   const templates = loadTemplates(cwd);
 
   switch (type) {
-    case 'component': return addComponent(name, config, structure, cwd, templates);
-    case 'hook':      return addHook(name, config, structure, cwd, templates);
-    case 'page':      return addPage(name, config, structure, cwd, templates);
-    case 'service':   return addService(name, config, structure, cwd, templates);
-    case 'context':   return addContext(name, config, structure, cwd, templates);
-    case 'store':     return addStore(name, config, structure, cwd, templates);
-    case 'type':      return addType(name, config, structure, cwd, templates);
-    case 'api':       return addApi(name, config, structure, cwd, templates);
-    case 'feature':   return addFeature(name, config, structure, cwd, templates);
+    case 'component':    return addComponent(name, config, structure, cwd, templates, opts);
+    case 'hook':         return addHook(name, config, structure, cwd, templates);
+    case 'page':         return addPage(name, config, structure, cwd, templates);
+    case 'service':      return addService(name, config, structure, cwd, templates);
+    case 'context':      return addContext(name, config, structure, cwd, templates);
+    case 'store':        return addStore(name, config, structure, cwd, templates);
+    case 'type':         return addType(name, config, structure, cwd, templates);
+    case 'api':          return addApi(name, config, structure, cwd, templates);
+    case 'feature':      return addFeature(name, config, structure, cwd, templates);
+    case 'layout':       return addAppRouterFile(name, 'layout', config, cwd, templates);
+    case 'loading':      return addAppRouterFile(name, 'loading', config, cwd, templates);
+    case 'error':        return addAppRouterFile(name, 'error', config, cwd, templates);
+    case 'not-found':    return addAppRouterFile(name, 'not-found', config, cwd, templates);
+    case 'middleware':   return addMiddleware(config, cwd, templates);
+    case 'server-action': return addServerAction(name, config, cwd, templates);
   }
 }
 

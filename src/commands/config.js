@@ -2,14 +2,15 @@ const chalk = require('chalk');
 const fs = require('fs-extra');
 const path = require('path');
 
-const VALID_KEYS = ['language', 'styling', 'withTests', 'useClient', 'pattern'];
+const VALID_KEYS = ['language', 'styling', 'withTests', 'useClient', 'pattern', 'testing'];
 
 const VALID_VALUES = {
   language: ['typescript', 'javascript'],
-  styling: ['css', 'scss'],
+  styling: ['css', 'scss', 'tailwind'],
   withTests: ['true', 'false'],
   useClient: ['true', 'false'],
   pattern: ['atomic-design', 'feature-based', 'domain-driven', 'mvc-like'],
+  testing: ['jest', 'vitest'],
 };
 
 function parseValue(key, raw) {

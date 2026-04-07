@@ -42,3 +42,37 @@ export function featureTemplate(
   name: string,
   config: RchitectConfig
 ): { files: Record<string, string>; resolvedName: string };
+
+export function layoutTemplate(
+  segment: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function loadingTemplate(
+  segment: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function errorTemplate(
+  segment: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function notFoundTemplate(
+  segment: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function middlewareTemplate(
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function serverActionTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function storyTemplate(
+  name: string,
+  config: RchitectConfig
+): Record<string, string>;
