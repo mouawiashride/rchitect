@@ -72,10 +72,11 @@ async function initCommand(options) {
     {
       type: 'list',
       name: 'styling',
-      message: 'Choose your styling:',
+      message: 'Choose your styling approach:',
       choices: [
         { name: 'CSS Modules', value: 'css' },
         { name: 'SCSS Modules', value: 'scss' },
+        { name: 'Tailwind CSS', value: 'tailwind' },
       ],
     },
     {
@@ -83,6 +84,17 @@ async function initCommand(options) {
       name: 'withTests',
       message: 'Generate test files alongside components?',
       default: false,
+    },
+    {
+      type: 'list',
+      name: 'testing',
+      message: 'Choose your test runner:',
+      choices: [
+        { name: 'Jest', value: 'jest' },
+        { name: 'Vitest', value: 'vitest' },
+      ],
+      default: 'jest',
+      when: (ans) => ans.withTests,
     },
     {
       type: 'confirm',
@@ -102,6 +114,7 @@ async function initCommand(options) {
 
   const { pattern, language, styling, withTests } = answers;
   const useClient = answers.useClient || false;
+  const testing = answers.testing || 'jest';
   const setupAliases = answers.pathAliases || false;
   const dryRun = options.dryRun || false;
 
@@ -143,7 +156,7 @@ async function initCommand(options) {
   }
 
   // Write config
-  const config = { framework, pattern, language, styling, withTests, useClient };
+  const config = { framework, pattern, language, styling, withTests, useClient, testing };
   if (!dryRun) await fs.writeJson(configPath, config, { spaces: 2 });
   console.log(prefix + chalk.gray('.rchitect.json'));
 
@@ -168,8 +181,14 @@ async function initCommand(options) {
     console.log(chalk.cyan('    rchitect add context <Name>'));
     console.log(chalk.cyan('    rchitect add store <Name>'));
     console.log(chalk.cyan('    rchitect add type <Name>'));
-    console.log(chalk.cyan('    rchitect add api <Name>   (Next.js only)'));
-    console.log(chalk.cyan('    rchitect add feature <Name>\n'));
+    console.log(chalk.cyan('    rchitect add api <Name>         (Next.js only)'));
+    console.log(chalk.cyan('    rchitect add feature <Name>'));
+    console.log(chalk.cyan('    rchitect add layout <segment>   (Next.js only)'));
+    console.log(chalk.cyan('    rchitect add loading <segment>  (Next.js only)'));
+    console.log(chalk.cyan('    rchitect add error <segment>    (Next.js only)'));
+    console.log(chalk.cyan('    rchitect add not-found <segment>(Next.js only)'));
+    console.log(chalk.cyan('    rchitect add middleware          (Next.js only)'));
+    console.log(chalk.cyan('    rchitect add server-action <Name>(Next.js only)\n'));
   }
 }
 

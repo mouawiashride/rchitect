@@ -1,9 +1,10 @@
 export type Framework = 'react' | 'nextjs';
 export type Pattern = 'atomic-design' | 'feature-based' | 'domain-driven' | 'mvc-like';
 export type Language = 'typescript' | 'javascript';
-export type Styling = 'css' | 'scss';
+export type Styling = 'css' | 'scss' | 'tailwind';
+export type Testing = 'jest' | 'vitest';
 export type AtomicLevel = 'atom' | 'molecule' | 'organism' | 'template' | 'page';
-export type ConfigKey = 'language' | 'styling' | 'withTests' | 'useClient' | 'pattern';
+export type ConfigKey = 'language' | 'styling' | 'withTests' | 'useClient' | 'pattern' | 'testing';
 
 export interface RchitectConfig {
   framework: Framework;
@@ -12,6 +13,7 @@ export interface RchitectConfig {
   styling: Styling;
   withTests: boolean;
   useClient: boolean;
+  testing?: Testing;
 }
 
 export interface Extensions {
@@ -56,4 +58,7 @@ export interface Structure {
   typePath: () => string;
   featurePath: () => string;
   apiPath?: () => string;
+  appRouterPath?: (segment?: string) => string;
+  serverActionPath?: () => string;
+  middlewarePath?: () => string;
 }

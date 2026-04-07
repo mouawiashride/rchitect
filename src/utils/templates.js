@@ -1,5 +1,7 @@
 const { toCamelCase } = require('./validate');
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function getExtensions(config) {
   const compExt = config.language === 'typescript' ? 'tsx' : 'jsx';
   const scriptExt = config.language === 'typescript' ? 'ts' : 'js';
@@ -7,64 +9,36 @@ function getExtensions(config) {
   return { compExt, scriptExt, styleExt };
 }
 
-function componentTemplate(name, config, level) {
-  const { compExt, scriptExt, styleExt } = getExtensions(config);
-  const useClient = config.framework === 'nextjs' && config.useClient;
-  const isTS = config.language === 'typescript';
-  const clientDirective = useClient ? `'use client';\n\n` : '';
-
-  let body;
-  if (config.pattern === 'atomic-design' && level) {
-    body = atomicBodyByLevel(name, level);
-  } else {
-    body = `  return <div className={styles.container}>${name}</div>;`;
-  }
-
-  const propsType = isTS ? `\ninterface ${name}Props {}\n` : '';
-  const fcType = isTS ? `: React.FC<${name}Props>` : '';
-
-  const component = `${clientDirective}import React from 'react';
-import styles from './${name}.module.${styleExt}';
-${propsType}
-const ${name}${fcType} = () => {
-${body}
-};
-
-export default ${name};
-`;
-
-  const files = {
-    [`${name}.${compExt}`]: component,
-    [`${name}.module.${styleExt}`]: `.container {}\n`,
-    [`index.${scriptExt}`]: `export { default } from './${name}';\n`,
-  };
-
-  if (config.withTests) {
-    files[`${name}.test.${compExt}`] = componentTestTemplate(name);
-  }
-
-  return files;
+function toPascalCase(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() +
+    str.slice(1).replace(/-([a-z0-9])/g, (_, l) => l.toUpperCase());
 }
 
-function atomicBodyByLevel(name, level) {
+// ── Component ─────────────────────────────────────────────────────────────────
+
+function atomicBodyByLevel(name, level, isTailwind) {
+  const cls = isTailwind ? 'className="container"' : 'className={styles.container}';
   switch (level) {
     case 'atom':
-      return `  return <span className={styles.container}>${name}</span>;`;
+      return `  return <span ${cls}>${name}</span>;`;
     case 'molecule':
-      return `  return (\n    <div className={styles.container}>\n      {/* Compose atoms here */}\n      <span>${name}</span>\n    </div>\n  );`;
+      return `  return (\n    <div ${cls}>\n      {/* Compose atoms here */}\n      <span>${name}</span>\n    </div>\n  );`;
     case 'organism':
-      return `  return (\n    <section className={styles.container}>\n      {/* Compose molecules here */}\n      <h2>${name}</h2>\n    </section>\n  );`;
+      return `  return (\n    <section ${cls}>\n      {/* Compose molecules here */}\n      <h2>${name}</h2>\n    </section>\n  );`;
     case 'template':
-      return `  return (\n    <div className={styles.container}>\n      {/* Layout structure — plug in organisms */}\n      <header />\n      <main>${name}</main>\n      <footer />\n    </div>\n  );`;
+      return `  return (\n    <div ${cls}>\n      {/* Layout structure — plug in organisms */}\n      <header />\n      <main>${name}</main>\n      <footer />\n    </div>\n  );`;
     case 'page':
-      return `  return (\n    <div className={styles.container}>\n      {/* Page — use a template and pass data */}\n      <h1>${name}</h1>\n    </div>\n  );`;
+      return `  return (\n    <div ${cls}>\n      {/* Page — use a template and pass data */}\n      <h1>${name}</h1>\n    </div>\n  );`;
     default:
-      return `  return <div className={styles.container}>${name}</div>;`;
+      return `  return <div ${cls}>${name}</div>;`;
   }
 }
 
-function componentTestTemplate(name) {
-  return `import React from 'react';
+function componentTestTemplate(name, config) {
+  const isVitest = config.testing === 'vitest';
+  const vitestImport = isVitest ? `import { describe, it } from 'vitest';\n` : '';
+  return `${vitestImport}import React from 'react';
 import { render } from '@testing-library/react';
 import ${name} from './${name}';
 
@@ -76,11 +50,59 @@ describe('${name}', () => {
 `;
 }
 
+function componentTemplate(name, config, level) {
+  const { compExt, scriptExt, styleExt } = getExtensions(config);
+  const isTailwind = config.styling === 'tailwind';
+  const useClient = config.framework === 'nextjs' && config.useClient;
+  const isTS = config.language === 'typescript';
+  const clientDirective = useClient ? `'use client';\n\n` : '';
+
+  let body;
+  if (config.pattern === 'atomic-design' && level) {
+    body = atomicBodyByLevel(name, level, isTailwind);
+  } else {
+    body = isTailwind
+      ? `  return <div className="container">${name}</div>;`
+      : `  return <div className={styles.container}>${name}</div>;`;
+  }
+
+  const styleImport = isTailwind ? '' : `import styles from './${name}.module.${styleExt}';\n`;
+  const propsType = isTS ? `\ninterface ${name}Props {}\n` : '';
+  const fcType = isTS ? `: React.FC<${name}Props>` : '';
+
+  const component = `${clientDirective}import React from 'react';
+${styleImport}${propsType}
+const ${name}${fcType} = () => {
+${body}
+};
+
+export default ${name};
+`;
+
+  const files = {
+    [`${name}.${compExt}`]: component,
+    [`index.${scriptExt}`]: `export { default } from './${name}';\n`,
+  };
+
+  if (!isTailwind) {
+    files[`${name}.module.${styleExt}`] = `.container {}\n`;
+  }
+
+  if (config.withTests) {
+    files[`${name}.test.${compExt}`] = componentTestTemplate(name, config);
+  }
+
+  return files;
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
 function hookTemplate(name, config) {
   const { scriptExt } = getExtensions(config);
   const camel = toCamelCase(name);
   const hookName = camel.startsWith('use') ? camel : `use${name}`;
   const isTS = config.language === 'typescript';
+  const isVitest = config.testing === 'vitest';
 
   const content = `import { useState, useEffect } from 'react';
 ${isTS ? `\ninterface ${name}Options {}\n` : ''}
@@ -98,7 +120,8 @@ export default ${hookName};
   };
 
   if (config.withTests) {
-    files[`${hookName}.test.${scriptExt}`] = `import { renderHook } from '@testing-library/react';
+    const vitestImport = isVitest ? `import { describe, it, expect } from 'vitest';\n` : '';
+    files[`${hookName}.test.${scriptExt}`] = `${vitestImport}import { renderHook } from '@testing-library/react';
 import ${hookName} from './${hookName}';
 
 describe('${hookName}', () => {
@@ -113,23 +136,28 @@ describe('${hookName}', () => {
   return { files, resolvedName: hookName };
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 function pageTemplate(name, config) {
   const { compExt, scriptExt, styleExt } = getExtensions(config);
+  const isTailwind = config.styling === 'tailwind';
   const useClient = config.framework === 'nextjs' && config.useClient;
   const isTS = config.language === 'typescript';
+  const isVitest = config.testing === 'vitest';
   const clientDirective = useClient ? `'use client';\n\n` : '';
 
+  const styleImport = isTailwind ? '' : `import styles from './${name}Page.module.${styleExt}';\n`;
+  const body = isTailwind
+    ? `    <div className="container">\n      <h1>${name}</h1>\n    </div>`
+    : `    <div className={styles.container}>\n      <h1>${name}</h1>\n    </div>`;
   const propsType = isTS ? `\ninterface ${name}PageProps {}\n` : '';
   const fcType = isTS ? `: React.FC<${name}PageProps>` : '';
 
   const component = `${clientDirective}import React from 'react';
-import styles from './${name}Page.module.${styleExt}';
-${propsType}
+${styleImport}${propsType}
 const ${name}Page${fcType} = () => {
   return (
-    <div className={styles.container}>
-      <h1>${name}</h1>
-    </div>
+${body}
   );
 };
 
@@ -138,12 +166,16 @@ export default ${name}Page;
 
   const files = {
     [`${name}Page.${compExt}`]: component,
-    [`${name}Page.module.${styleExt}`]: `.container {}\n`,
     [`index.${scriptExt}`]: `export { default } from './${name}Page';\n`,
   };
 
+  if (!isTailwind) {
+    files[`${name}Page.module.${styleExt}`] = `.container {}\n`;
+  }
+
   if (config.withTests) {
-    files[`${name}Page.test.${compExt}`] = `import React from 'react';
+    const vitestImport = isVitest ? `import { describe, it } from 'vitest';\n` : '';
+    files[`${name}Page.test.${compExt}`] = `${vitestImport}import React from 'react';
 import { render } from '@testing-library/react';
 import ${name}Page from './${name}Page';
 
@@ -158,11 +190,14 @@ describe('${name}Page', () => {
   return files;
 }
 
+// ── Service ───────────────────────────────────────────────────────────────────
+
 function serviceTemplate(name, config) {
   const { scriptExt } = getExtensions(config);
   const camel = toCamelCase(name);
   const serviceName = `${camel}Service`;
   const isTS = config.language === 'typescript';
+  const isVitest = config.testing === 'vitest';
 
   const content = isTS
     ? `interface ${name}Service {}\n\nconst ${serviceName}: ${name}Service = {\n  // Add service methods here\n};\n\nexport default ${serviceName};\n`
@@ -174,7 +209,8 @@ function serviceTemplate(name, config) {
   };
 
   if (config.withTests) {
-    files[`${serviceName}.test.${scriptExt}`] = `import ${serviceName} from './${serviceName}';
+    const vitestImport = isVitest ? `import { describe, it, expect } from 'vitest';\n` : '';
+    files[`${serviceName}.test.${scriptExt}`] = `${vitestImport}import ${serviceName} from './${serviceName}';
 
 describe('${serviceName}', () => {
   it('should be defined', () => {
@@ -187,13 +223,14 @@ describe('${serviceName}', () => {
   return { files, resolvedName: serviceName };
 }
 
+// ── Context ───────────────────────────────────────────────────────────────────
+
 function contextTemplate(name, config) {
   const { compExt, scriptExt } = getExtensions(config);
   const useClient = config.framework === 'nextjs';
   const isTS = config.language === 'typescript';
-  // Contexts are always client components in Next.js
+  const isVitest = config.testing === 'vitest';
   const clientDirective = useClient ? `'use client';\n\n` : '';
-  const camel = toCamelCase(name);
   const hookName = `use${name}`;
   const contextName = `${name}Context`;
 
@@ -265,7 +302,8 @@ export default ${contextName};
   };
 
   if (config.withTests) {
-    files[`${contextName}.test.${compExt}`] = `import React from 'react';
+    const vitestImport = isVitest ? `import { describe, it, expect } from 'vitest';\n` : '';
+    files[`${contextName}.test.${compExt}`] = `${vitestImport}import React from 'react';
 import { render, renderHook } from '@testing-library/react';
 import { ${name}Provider, ${hookName} } from './${contextName}';
 
@@ -286,11 +324,13 @@ describe('${hookName}', () => {
   return { files, resolvedName: contextName };
 }
 
+// ── Store ─────────────────────────────────────────────────────────────────────
+
 function storeTemplate(name, config) {
   const { scriptExt } = getExtensions(config);
-  const camel = toCamelCase(name);
   const storeName = `use${name}Store`;
   const isTS = config.language === 'typescript';
+  const isVitest = config.testing === 'vitest';
 
   const content = isTS
     ? `import { create } from 'zustand';
@@ -324,7 +364,8 @@ export default ${storeName};
   };
 
   if (config.withTests) {
-    files[`${storeName}.test.${scriptExt}`] = `import { act, renderHook } from '@testing-library/react';
+    const vitestImport = isVitest ? `import { describe, it, expect } from 'vitest';\n` : '';
+    files[`${storeName}.test.${scriptExt}`] = `${vitestImport}import { act, renderHook } from '@testing-library/react';
 import ${storeName} from './${storeName}';
 
 describe('${storeName}', () => {
@@ -339,11 +380,11 @@ describe('${storeName}', () => {
   return { files, resolvedName: storeName };
 }
 
+// ── Type ──────────────────────────────────────────────────────────────────────
+
 function typeTemplate(name, config) {
   const { scriptExt } = getExtensions(config);
-  const camel = toCamelCase(name);
 
-  // Type files are TS-only; for JS projects generate a JSDoc file
   const content = config.language === 'typescript'
     ? `// ${name} types
 
@@ -364,13 +405,13 @@ export type Partial${name} = Partial<${name}>;
 module.exports = {};
 `;
 
-  const ext = config.language === 'typescript' ? scriptExt : scriptExt;
-
   return {
-    files: { [`${name}.types.${ext}`]: content },
+    files: { [`${name}.types.${scriptExt}`]: content },
     resolvedName: `${name}.types`,
   };
 }
+
+// ── API Route ─────────────────────────────────────────────────────────────────
 
 function apiTemplate(name, config) {
   const isTS = config.language === 'typescript';
@@ -427,23 +468,29 @@ export async function POST(request) {
   };
 }
 
+// ── Feature ───────────────────────────────────────────────────────────────────
+
 function featureTemplate(name, config) {
   const { compExt, scriptExt, styleExt } = getExtensions(config);
+  const isTailwind = config.styling === 'tailwind';
   const isTS = config.language === 'typescript';
+  const isVitest = config.testing === 'vitest';
   const useClient = config.framework === 'nextjs' && config.useClient;
   const clientDirective = useClient ? `'use client';\n\n` : '';
   const camel = toCamelCase(name);
   const hookName = `use${name}`;
   const serviceName = `${camel}Service`;
 
+  const styleImport = isTailwind ? '' : `import styles from './${name}View.module.${styleExt}';\n`;
+  const body = isTailwind
+    ? `    <div className="container">\n      <h1>${name}</h1>\n    </div>`
+    : `    <div className={styles.container}>\n      <h1>${name}</h1>\n    </div>`;
+
   const viewComp = `${clientDirective}import React from 'react';
-import styles from './${name}View.module.${styleExt}';
-${isTS ? `\ninterface ${name}ViewProps {}\n` : ''}
+${styleImport}${isTS ? `\ninterface ${name}ViewProps {}\n` : ''}
 const ${name}View${isTS ? `: React.FC<${name}ViewProps>` : ''} = () => {
   return (
-    <div className={styles.container}>
-      <h1>${name}</h1>
-    </div>
+${body}
   );
 };
 
@@ -472,7 +519,6 @@ export default ${hookName};
 
   const files = {
     [`components/${name}View/${name}View.${compExt}`]: viewComp,
-    [`components/${name}View/${name}View.module.${styleExt}`]: `.container {}\n`,
     [`components/${name}View/index.${scriptExt}`]: `export { default } from './${name}View';\n`,
     [`hooks/${hookName}/${hookName}.${scriptExt}`]: hookContent,
     [`hooks/${hookName}/index.${scriptExt}`]: `export { default } from './${hookName}';\n`,
@@ -482,13 +528,201 @@ export default ${hookName};
     [`index.${scriptExt}`]: featureIndex,
   };
 
+  if (!isTailwind) {
+    files[`components/${name}View/${name}View.module.${styleExt}`] = `.container {}\n`;
+  }
+
   if (config.withTests) {
-    files[`components/${name}View/${name}View.test.${compExt}`] = `import React from 'react';\nimport { render } from '@testing-library/react';\nimport ${name}View from './${name}View';\n\ndescribe('${name}View', () => {\n  it('renders without crashing', () => {\n    render(<${name}View />);\n  });\n});\n`;
-    files[`hooks/${hookName}/${hookName}.test.${scriptExt}`] = `import { renderHook } from '@testing-library/react';\nimport ${hookName} from './${hookName}';\n\ndescribe('${hookName}', () => {\n  it('returns expected value', () => {\n    const { result } = renderHook(() => ${hookName}());\n    expect(result.current).toBeDefined();\n  });\n});\n`;
+    const vitestImport = isVitest ? `import { describe, it } from 'vitest';\n` : '';
+    const vitestHookImport = isVitest ? `import { describe, it, expect } from 'vitest';\n` : '';
+    files[`components/${name}View/${name}View.test.${compExt}`] = `${vitestImport}import React from 'react';\nimport { render } from '@testing-library/react';\nimport ${name}View from './${name}View';\n\ndescribe('${name}View', () => {\n  it('renders without crashing', () => {\n    render(<${name}View />);\n  });\n});\n`;
+    files[`hooks/${hookName}/${hookName}.test.${scriptExt}`] = `${vitestHookImport}import { renderHook } from '@testing-library/react';\nimport ${hookName} from './${hookName}';\n\ndescribe('${hookName}', () => {\n  it('returns expected value', () => {\n    const { result } = renderHook(() => ${hookName}());\n    expect(result.current).toBeDefined();\n  });\n});\n`;
   }
 
   return { files, resolvedName: name };
 }
+
+// ── Next.js App Router ────────────────────────────────────────────────────────
+
+function layoutTemplate(segment, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'tsx' : 'jsx';
+  const segmentName = toPascalCase(segment);
+
+  const content = isTS
+    ? `export default function ${segmentName}Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <div>
+      {children}
+    </div>
+  );
+}
+`
+    : `export default function ${segmentName}Layout({ children }) {
+  return (
+    <div>
+      {children}
+    </div>
+  );
+}
+`;
+
+  return { files: { [`layout.${ext}`]: content }, resolvedName: `${segment}/layout` };
+}
+
+function loadingTemplate(segment, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'tsx' : 'jsx';
+  const segmentName = toPascalCase(segment);
+
+  const content = `export default function ${segmentName}Loading() {
+  return (
+    <div>
+      <p>Loading...</p>
+    </div>
+  );
+}
+`;
+
+  return { files: { [`loading.${ext}`]: content }, resolvedName: `${segment}/loading` };
+}
+
+function errorTemplate(segment, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'tsx' : 'jsx';
+  const segmentName = toPascalCase(segment);
+  const propsType = isTS ? `\ninterface ErrorProps {\n  error: Error & { digest?: string };\n  reset: () => void;\n}\n` : '';
+  const props = isTS ? `{ error, reset }: ErrorProps` : `{ error, reset }`;
+
+  const content = `'use client';
+
+import { useEffect } from 'react';
+${propsType}
+export default function ${segmentName}Error(${props}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+`;
+
+  return { files: { [`error.${ext}`]: content }, resolvedName: `${segment}/error` };
+}
+
+function notFoundTemplate(segment, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'tsx' : 'jsx';
+  const segmentName = toPascalCase(segment);
+
+  const content = `export default function ${segmentName}NotFound() {
+  return (
+    <div>
+      <h2>Not Found</h2>
+      <p>Could not find the requested resource.</p>
+    </div>
+  );
+}
+`;
+
+  return { files: { [`not-found.${ext}`]: content }, resolvedName: `${segment}/not-found` };
+}
+
+function middlewareTemplate(config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+
+  const content = isTS
+    ? `import { NextRequest, NextResponse } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};
+`
+    : `/**
+ * @param {import('next/server').NextRequest} request
+ */
+export function middleware(request) {
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};
+`;
+
+  return { files: { [`middleware.${ext}`]: content }, resolvedName: 'middleware' };
+}
+
+function serverActionTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const camel = toCamelCase(name);
+  const actionName = `${camel}Action`;
+
+  const content = isTS
+    ? `'use server';
+
+export async function ${actionName}(formData: FormData): Promise<void> {
+  // Implement server action
+}
+`
+    : `'use server';
+
+/**
+ * @param {FormData} formData
+ */
+export async function ${actionName}(formData) {
+  // Implement server action
+}
+`;
+
+  return { files: { [`${camel}.${ext}`]: content }, resolvedName: camel };
+}
+
+// ── Storybook ─────────────────────────────────────────────────────────────────
+
+function storyTemplate(name, config) {
+  const { compExt } = getExtensions(config);
+  const isTS = config.language === 'typescript';
+
+  const content = isTS
+    ? `import type { Meta, StoryObj } from '@storybook/react';
+import ${name} from './${name}';
+
+const meta: Meta<typeof ${name}> = {
+  title: 'Components/${name}',
+  component: ${name},
+};
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+`
+    : `import ${name} from './${name}';
+
+export default {
+  title: 'Components/${name}',
+  component: ${name},
+};
+
+export const Default = {};
+`;
+
+  return { [`${name}.stories.${compExt}`]: content };
+}
+
+// ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
   getExtensions,
@@ -501,4 +735,11 @@ module.exports = {
   typeTemplate,
   apiTemplate,
   featureTemplate,
+  layoutTemplate,
+  loadingTemplate,
+  errorTemplate,
+  notFoundTemplate,
+  middlewareTemplate,
+  serverActionTemplate,
+  storyTemplate,
 };
