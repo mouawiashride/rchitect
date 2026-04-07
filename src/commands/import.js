@@ -9,6 +9,9 @@ function detectFramework(pkg) {
   const deps = { ...pkg.dependencies, ...pkg.devDependencies };
   if (deps.next) return 'nextjs';
   if (deps.react) return 'react';
+  if (deps.vue) return 'vue';
+  if (deps.svelte || deps['@sveltejs/kit']) return 'svelte';
+  if (deps['solid-js']) return 'solidjs';
   return null;
 }
 
@@ -93,7 +96,7 @@ async function importCommand() {
   // 2. Detect everything
   const framework = detectFramework(pkg);
   if (!framework) {
-    console.log(chalk.red('  Error: Could not detect React or Next.js in package.json dependencies.\n'));
+    console.log(chalk.red('  Error: Could not detect a supported framework (React, Next.js, Vue, Svelte, SolidJS) in package.json.\n'));
     process.exit(1);
   }
 
@@ -106,7 +109,8 @@ async function importCommand() {
 
   // 3. Display what was detected
   console.log(chalk.bold('  Detected configuration:\n'));
-  console.log(`  ${chalk.gray('framework')}   ${chalk.cyan(framework === 'nextjs' ? 'Next.js' : 'React')}`);
+  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS' };
+  console.log(`  ${chalk.gray('framework')}   ${chalk.cyan(frameworkLabels[framework] || framework)}`);
   console.log(`  ${chalk.gray('pattern')}     ${chalk.cyan(pattern)}`);
   console.log(`  ${chalk.gray('language')}    ${chalk.cyan(language)}`);
   console.log(`  ${chalk.gray('styling')}     ${chalk.cyan(styling)}`);

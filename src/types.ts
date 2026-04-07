@@ -1,4 +1,4 @@
-export type Framework = 'react' | 'nextjs';
+export type Framework = 'react' | 'nextjs' | 'vue' | 'svelte' | 'solidjs';
 export type Pattern = 'atomic-design' | 'feature-based' | 'domain-driven' | 'mvc-like';
 export type Language = 'typescript' | 'javascript';
 export type Styling = 'css' | 'scss' | 'tailwind';
@@ -17,7 +17,7 @@ export interface RchitectConfig {
 }
 
 export interface Extensions {
-  compExt: 'tsx' | 'jsx';
+  compExt: 'tsx' | 'jsx' | 'vue' | 'svelte';
   scriptExt: 'ts' | 'js';
   styleExt: 'css' | 'scss';
 }
