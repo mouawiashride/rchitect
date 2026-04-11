@@ -6,7 +6,7 @@ function getExtensions(config) {
   const scriptExt = config.language === 'typescript' ? 'ts' : 'js';
   const styleExt = config.styling === 'scss' ? 'scss' : 'css';
   let compExt;
-  if (config.framework === 'vue') compExt = 'vue';
+  if (config.framework === 'vue' || config.framework === 'nuxt') compExt = 'vue';
   else if (config.framework === 'svelte') compExt = 'svelte';
   else compExt = config.language === 'typescript' ? 'tsx' : 'jsx';
   return { compExt, scriptExt, styleExt };
@@ -54,7 +54,7 @@ describe('${name}', () => {
 }
 
 function componentTemplate(name, config, level) {
-  if (config.framework === 'vue') return vueComponentTemplate(name, config, level);
+  if (config.framework === 'vue' || config.framework === 'nuxt') return vueComponentTemplate(name, config, level);
   if (config.framework === 'svelte') return svelteComponentTemplate(name, config, level);
   if (config.framework === 'solidjs') return solidComponentTemplate(name, config, level);
   const { compExt, scriptExt, styleExt } = getExtensions(config);
@@ -104,7 +104,7 @@ export default ${name};
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 function hookTemplate(name, config) {
-  if (config.framework === 'vue') return vueComposableTemplate(name, config);
+  if (config.framework === 'vue' || config.framework === 'nuxt') return vueComposableTemplate(name, config);
   if (config.framework === 'svelte') return svelteComposableTemplate(name, config);
   if (config.framework === 'solidjs') return solidHookTemplate(name, config);
   const { scriptExt } = getExtensions(config);
@@ -148,7 +148,7 @@ describe('${hookName}', () => {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function pageTemplate(name, config) {
-  if (config.framework === 'vue') return vuePageTemplate(name, config);
+  if (config.framework === 'vue' || config.framework === 'nuxt') return vuePageTemplate(name, config);
   if (config.framework === 'svelte') return sveltePageTemplate(name, config);
   if (config.framework === 'solidjs') return solidPageTemplate(name, config);
   const { compExt, scriptExt, styleExt } = getExtensions(config);
@@ -238,7 +238,7 @@ describe('${serviceName}', () => {
 // ── Context ───────────────────────────────────────────────────────────────────
 
 function contextTemplate(name, config) {
-  if (config.framework === 'vue') return vueContextTemplate(name, config);
+  if (config.framework === 'vue' || config.framework === 'nuxt') return vueContextTemplate(name, config);
   if (config.framework === 'svelte') return svelteContextTemplate(name, config);
   if (config.framework === 'solidjs') return solidContextTemplate(name, config);
   const { compExt, scriptExt } = getExtensions(config);
@@ -342,7 +342,7 @@ describe('${hookName}', () => {
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 function storeTemplate(name, config) {
-  if (config.framework === 'vue') return vuePiniaStoreTemplate(name, config);
+  if (config.framework === 'vue' || config.framework === 'nuxt') return vuePiniaStoreTemplate(name, config);
   if (config.framework === 'svelte') return svelteStoreTemplate(name, config);
   if (config.framework === 'solidjs') return solidStoreTemplate(name, config);
   const { scriptExt } = getExtensions(config);
@@ -489,7 +489,7 @@ export async function POST(request) {
 // ── Feature ───────────────────────────────────────────────────────────────────
 
 function featureTemplate(name, config) {
-  if (config.framework === 'vue') return vueFeatureTemplate(name, config);
+  if (config.framework === 'vue' || config.framework === 'nuxt') return vueFeatureTemplate(name, config);
   if (config.framework === 'svelte') return svelteFeatureTemplate(name, config);
   if (config.framework === 'solidjs') return solidFeatureTemplate(name, config);
   const { compExt, scriptExt, styleExt } = getExtensions(config);
@@ -1617,6 +1617,66 @@ export default ${hookName};
   return { files, resolvedName: name };
 }
 
+// ── Nuxt-specific templates ───────────────────────────────────────────────────
+
+function nuxtApiTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const camel = toCamelCase(name);
+
+  const content = isTS
+    ? `export default defineEventHandler(async (event) => {
+  // ${name} API handler
+  return {
+    data: null,
+  };
+});
+`
+    : `export default defineEventHandler(async (event) => {
+  // ${name} API handler
+  return {
+    data: null,
+  };
+});
+`;
+
+  return {
+    files: { [`${camel}.${ext}`]: content },
+    resolvedName: camel,
+  };
+}
+
+function nuxtLayoutTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const isTailwind = config.styling === 'tailwind';
+  const scriptLang = isTS ? ` lang="ts"` : '';
+  const bodyClass = isTailwind ? `class="layout"` : `class="${name}"`;
+  const styleBlock = isTailwind ? '' : `\n<style scoped>\n.${name} {}\n</style>\n`;
+
+  const content = `<script setup${scriptLang}>\n// ${name} layout\n</script>\n\n<template>\n  <div ${bodyClass}>\n    <slot />\n  </div>\n</template>${styleBlock}`;
+
+  return {
+    files: { [`${name}.vue`]: content },
+    resolvedName: name,
+  };
+}
+
+function nuxtMiddlewareTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const camel = toCamelCase(name);
+
+  const content = `export default defineNuxtRouteMiddleware((to, from) => {
+  // ${name} middleware logic
+});
+`;
+
+  return {
+    files: { [`${camel}.${ext}`]: content },
+    resolvedName: camel,
+  };
+}
+
 // ── Storybook ─────────────────────────────────────────────────────────────────
 
 function storyTemplate(name, config) {
@@ -1670,4 +1730,7 @@ module.exports = {
   middlewareTemplate,
   serverActionTemplate,
   storyTemplate,
+  nuxtApiTemplate,
+  nuxtLayoutTemplate,
+  nuxtMiddlewareTemplate,
 };

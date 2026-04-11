@@ -1,4 +1,4 @@
-export type Framework = 'react' | 'nextjs' | 'vue' | 'svelte' | 'solidjs';
+export type Framework = 'react' | 'nextjs' | 'vue' | 'svelte' | 'solidjs' | 'nuxt';
 export type Pattern = 'atomic-design' | 'feature-based' | 'domain-driven' | 'mvc-like';
 export type Language = 'typescript' | 'javascript';
 export type Styling = 'css' | 'scss' | 'tailwind';
@@ -61,4 +61,5 @@ export interface Structure {
   appRouterPath?: (segment?: string) => string;
   serverActionPath?: () => string;
   middlewarePath?: () => string;
+  layoutPath?: () => string;
 }

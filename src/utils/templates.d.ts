@@ -76,3 +76,18 @@ export function storyTemplate(
   name: string,
   config: RchitectConfig
 ): Record<string, string>;
+
+export function nuxtApiTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function nuxtLayoutTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function nuxtMiddlewareTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };

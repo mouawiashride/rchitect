@@ -1,0 +1,122 @@
+// Nuxt 3 project structures — no src/ prefix (Nuxt convention)
+// composables/ and components/ are auto-imported by Nuxt
+// server/api/ for server routes, layouts/ for Nuxt layouts
+
+const structures = {
+  'atomic-design': {
+    folders: [
+      'components/atoms',
+      'components/molecules',
+      'components/organisms',
+      'components/templates',
+      'components/pages',
+      'composables',
+      'stores',
+      'layouts',
+      'pages',
+      'server/api',
+      'middleware',
+      'utils',
+      'assets',
+    ],
+    componentPath: (name, level) => {
+      const levels = {
+        atom: 'components/atoms',
+        molecule: 'components/molecules',
+        organism: 'components/organisms',
+        template: 'components/templates',
+        page: 'components/pages',
+      };
+      return levels[level] || 'components/atoms';
+    },
+    hookPath: () => 'composables',
+    pagePath: () => 'pages',
+    servicePath: () => 'utils',
+    contextPath: () => 'composables',
+    storePath: () => 'stores',
+    typePath: () => 'types',
+    featurePath: () => 'features',
+    apiPath: () => 'server/api',
+    layoutPath: () => 'layouts',
+    middlewarePath: () => 'middleware',
+  },
+
+  'feature-based': {
+    folders: [
+      'features',
+      'components/shared',
+      'composables',
+      'stores',
+      'layouts',
+      'pages',
+      'server/api',
+      'middleware',
+      'utils',
+      'assets',
+    ],
+    componentPath: () => 'components/shared',
+    hookPath: () => 'composables',
+    pagePath: () => 'pages',
+    servicePath: () => 'utils',
+    contextPath: () => 'composables',
+    storePath: () => 'stores',
+    typePath: () => 'types',
+    featurePath: () => 'features',
+    apiPath: () => 'server/api',
+    layoutPath: () => 'layouts',
+    middlewarePath: () => 'middleware',
+  },
+
+  'domain-driven': {
+    folders: [
+      'domains',
+      'shared/components',
+      'shared/composables',
+      'shared/stores',
+      'shared/utils',
+      'layouts',
+      'pages',
+      'server/api',
+      'middleware',
+      'assets',
+    ],
+    componentPath: () => 'shared/components',
+    hookPath: () => 'shared/composables',
+    pagePath: () => 'pages',
+    servicePath: () => 'shared/utils',
+    contextPath: () => 'shared/composables',
+    storePath: () => 'shared/stores',
+    typePath: () => 'types',
+    featurePath: () => 'domains',
+    apiPath: () => 'server/api',
+    layoutPath: () => 'layouts',
+    middlewarePath: () => 'middleware',
+  },
+
+  'mvc-like': {
+    folders: [
+      'components',
+      'pages',
+      'composables',
+      'stores',
+      'layouts',
+      'server/api',
+      'middleware',
+      'utils',
+      'assets',
+    ],
+    componentPath: () => 'components',
+    hookPath: () => 'composables',
+    pagePath: () => 'pages',
+    servicePath: () => 'utils',
+    contextPath: () => 'composables',
+    storePath: () => 'stores',
+    typePath: () => 'types',
+    featurePath: () => 'features',
+    apiPath: () => 'server/api',
+    layoutPath: () => 'layouts',
+    middlewarePath: () => 'middleware',
+  },
+};
+
+module.exports = structures;

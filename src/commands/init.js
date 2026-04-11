@@ -7,6 +7,7 @@ const nextjsStructures = require('../structures/nextjs');
 const vueStructures = require('../structures/vue');
 const svelteStructures = require('../structures/svelte');
 const solidjsStructures = require('../structures/solidjs');
+const nuxtStructures = require('../structures/nuxt');
 const { detectFramework } = require('../utils/detect');
 const { generatePathAliases } = require('../utils/pathAlias');
 
@@ -27,7 +28,7 @@ async function initCommand(options) {
   const detected = await detectFramework(cwd);
   let framework;
 
-  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS' };
+  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS', nuxt: 'Nuxt 3' };
 
   if (detected) {
     console.log(chalk.green('  Detected: ') + chalk.white(frameworkLabels[detected] || detected) + '\n');
@@ -49,6 +50,7 @@ async function initCommand(options) {
         { name: 'React', value: 'react' },
         { name: 'Next.js', value: 'nextjs' },
         { name: 'Vue 3', value: 'vue' },
+        { name: 'Nuxt 3', value: 'nuxt' },
         { name: 'Svelte / SvelteKit', value: 'svelte' },
         { name: 'SolidJS', value: 'solidjs' },
       ],
@@ -132,6 +134,7 @@ async function initCommand(options) {
     vue: vueStructures,
     svelte: svelteStructures,
     solidjs: solidjsStructures,
+    nuxt: nuxtStructures,
   };
   const structures = structureMap[framework] || reactStructures;
   const structure = structures[pattern];
@@ -189,7 +192,7 @@ async function initCommand(options) {
   } else {
     console.log(chalk.bold.green('\n  Done! Architecture folders are ready.\n'));
     console.log(chalk.gray('  Add resources with:'));
-    const hookLabel = (framework === 'vue' || framework === 'svelte') ? 'composable' : 'hook';
+    const hookLabel = (framework === 'vue' || framework === 'nuxt' || framework === 'svelte') ? 'composable' : 'hook';
     console.log(chalk.cyan('    rchitect add component <Name>'));
     console.log(chalk.cyan(`    rchitect add ${hookLabel} <Name>`));
     console.log(chalk.cyan('    rchitect add page <Name>'));
@@ -199,13 +202,18 @@ async function initCommand(options) {
     console.log(chalk.cyan('    rchitect add type <Name>'));
     console.log(chalk.cyan('    rchitect add feature <Name>'));
     if (framework === 'nextjs') {
-      console.log(chalk.cyan('    rchitect add api <Name>         (Next.js only)'));
-      console.log(chalk.cyan('    rchitect add layout <segment>   (Next.js only)'));
-      console.log(chalk.cyan('    rchitect add loading <segment>  (Next.js only)'));
-      console.log(chalk.cyan('    rchitect add error <segment>    (Next.js only)'));
-      console.log(chalk.cyan('    rchitect add not-found <segment>(Next.js only)'));
-      console.log(chalk.cyan('    rchitect add middleware          (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add api <Name>          (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add layout <segment>    (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add loading <segment>   (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add error <segment>     (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add not-found <segment> (Next.js only)'));
+      console.log(chalk.cyan('    rchitect add middleware           (Next.js only)'));
       console.log(chalk.cyan('    rchitect add server-action <Name>(Next.js only)'));
+    }
+    if (framework === 'nuxt') {
+      console.log(chalk.cyan('    rchitect add api <Name>          (Nuxt only)'));
+      console.log(chalk.cyan('    rchitect add layout <Name>       (Nuxt only)'));
+      console.log(chalk.cyan('    rchitect add middleware <Name>   (Nuxt only)'));
     }
     console.log('');
   }

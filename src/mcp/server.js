@@ -14,12 +14,14 @@ const nextjsStructures = require('../structures/nextjs');
 const vueStructures    = require('../structures/vue');
 const svelteStructures = require('../structures/svelte');
 const solidjsStructures = require('../structures/solidjs');
+const nuxtStructures   = require('../structures/nuxt');
 const { toCamelCase, validateName }  = require('../utils/validate');
 const {
   getExtensions, componentTemplate, hookTemplate, pageTemplate, serviceTemplate,
   contextTemplate, storeTemplate, typeTemplate, apiTemplate, featureTemplate,
   layoutTemplate, loadingTemplate, errorTemplate, notFoundTemplate,
   middlewareTemplate, serverActionTemplate,
+  nuxtApiTemplate, nuxtLayoutTemplate, nuxtMiddlewareTemplate,
 } = require('../utils/templates');
 const { updateBarrel } = require('../utils/barrel');
 
@@ -133,6 +135,7 @@ function handleGetArchitectureGuide(cwd) {
     vue: vueStructures,
     svelte: svelteStructures,
     solidjs: solidjsStructures,
+    nuxt: nuxtStructures,
   };
   const structures = structureMap[config.framework] || reactStructures;
   const structure  = structures[config.pattern];
@@ -155,13 +158,15 @@ function handleGetArchitectureGuide(cwd) {
     type:     `${structure.typePath()}/<Name>.types.${scriptExt}  (single file — no subdirectory)`,
     api:      config.framework === 'nextjs'
       ? `${structure.apiPath()}/<name>/route.${scriptExt}  (Next.js only)`
-      : 'Not supported — API routes require Next.js.',
+      : config.framework === 'nuxt'
+      ? `server/api/<name>.${scriptExt}  (Nuxt only)`
+      : 'Not supported — API routes require Next.js or Nuxt.',
     feature:  `${structure.featurePath()}/<Name>/  (contains components/, hooks/, services/, types.${scriptExt}, index.${scriptExt})`,
-    layout:   config.framework === 'nextjs' ? 'app/<segment>/layout.tsx' : 'Not supported — Next.js only.',
+    layout:   config.framework === 'nextjs' ? 'app/<segment>/layout.tsx' : config.framework === 'nuxt' ? 'layouts/<Name>.vue' : 'Not supported — Next.js or Nuxt only.',
     loading:  config.framework === 'nextjs' ? 'app/<segment>/loading.tsx' : 'Not supported — Next.js only.',
     error:    config.framework === 'nextjs' ? 'app/<segment>/error.tsx (always "use client")' : 'Not supported — Next.js only.',
     'not-found': config.framework === 'nextjs' ? 'app/<segment>/not-found.tsx' : 'Not supported — Next.js only.',
-    middleware:  config.framework === 'nextjs' ? 'middleware.ts (project root)' : 'Not supported — Next.js only.',
+    middleware:  config.framework === 'nextjs' ? 'middleware.ts (project root)' : config.framework === 'nuxt' ? `middleware/<name>.${scriptExt}` : 'Not supported — Next.js or Nuxt only.',
     'server-action': config.framework === 'nextjs' ? 'app/actions/<name>.ts' : 'Not supported — Next.js only.',
   };
 
@@ -205,6 +210,7 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
     vue: vueStructures,
     svelte: svelteStructures,
     solidjs: solidjsStructures,
+    nuxt: nuxtStructures,
   };
   const structures = structureMap2[config.framework] || reactStructures;
   const structure  = structures[config.pattern];
@@ -307,14 +313,20 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
     }
 
     case 'api': {
-      if (config.framework !== 'nextjs') {
-        return { error: 'API routes are only supported for Next.js projects.' };
+      if (config.framework !== 'nextjs' && config.framework !== 'nuxt') {
+        return { error: 'API routes are only supported for Next.js and Nuxt projects.' };
       }
       const apiName = camel;
-      directory    = `${structure.apiPath()}/${apiName}`;
+      directory    = `${structure.apiPath()}`;
       resolvedName = apiName;
-      files = [`route.${scriptExt}`];
-      note = `Name normalized to camelCase: "${camel}". Access at /api/${apiName}.`;
+      if (config.framework === 'nuxt') {
+        files = [`${apiName}.${scriptExt}`];
+        note = `Nuxt server route. Accessible at /api/${apiName}.`;
+      } else {
+        directory = `${structure.apiPath()}/${apiName}`;
+        files = [`route.${scriptExt}`];
+        note = `Name normalized to camelCase: "${camel}". Access at /api/${apiName}.`;
+      }
       break;
     }
 
@@ -344,7 +356,24 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
       break;
     }
 
-    case 'layout':
+    case 'layout': {
+      if (config.framework === 'nuxt') {
+        directory    = structure.layoutPath ? structure.layoutPath() : 'layouts';
+        resolvedName = name;
+        files = [`${name}.vue`];
+        note = 'Nuxt layout. Use definePageMeta to apply it.';
+      } else if (config.framework === 'nextjs') {
+        const ext = config.language === 'typescript' ? 'tsx' : 'jsx';
+        directory    = `app/${name}`;
+        resolvedName = `${name}/layout`;
+        files = [`layout.${ext}`];
+        note = null;
+      } else {
+        return { error: '"layout" is only supported for Next.js and Nuxt projects.' };
+      }
+      break;
+    }
+
     case 'loading':
     case 'error':
     case 'not-found': {
@@ -352,7 +381,7 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
         return { error: `"${type}" is only supported for Next.js projects.` };
       }
       const ext = config.language === 'typescript' ? 'tsx' : 'jsx';
-      const fileNames = { layout: 'layout', loading: 'loading', error: 'error', 'not-found': 'not-found' };
+      const fileNames = { loading: 'loading', error: 'error', 'not-found': 'not-found' };
       directory    = `app/${name}`;
       resolvedName = `${name}/${fileNames[type]}`;
       files = [`${fileNames[type]}.${ext}`];
@@ -361,14 +390,21 @@ function handleResolveResourcePath({ type, name, atomicLevel }, cwd) {
     }
 
     case 'middleware': {
-      if (config.framework !== 'nextjs') {
-        return { error: 'Middleware is only supported for Next.js projects.' };
+      if (config.framework === 'nuxt') {
+        const ext = config.language === 'typescript' ? 'ts' : 'js';
+        directory    = structure.middlewarePath ? structure.middlewarePath() : 'middleware';
+        resolvedName = camel;
+        files = [`${camel}.${ext}`];
+        note = 'Nuxt route middleware. Runs on navigation.';
+      } else if (config.framework === 'nextjs') {
+        const ext = config.language === 'typescript' ? 'ts' : 'js';
+        directory    = '';
+        resolvedName = 'middleware';
+        files = [`middleware.${ext}`];
+        note = 'Created at the project root. Runs before every matching request.';
+      } else {
+        return { error: 'Middleware is only supported for Next.js and Nuxt projects.' };
       }
-      const ext = config.language === 'typescript' ? 'ts' : 'js';
-      directory    = '';
-      resolvedName = 'middleware';
-      files = [`middleware.${ext}`];
-      note = 'Created at the project root. Runs before every matching request.';
       break;
     }
 
@@ -411,6 +447,7 @@ async function handleCreateResource({ type, name, atomicLevel, segment }, cwd) {
     vue: vueStructures,
     svelte: svelteStructures,
     solidjs: solidjsStructures,
+    nuxt: nuxtStructures,
   };
   const structures = structureMap3[config.framework] || reactStructures;
   const structure  = structures[config.pattern];
@@ -502,12 +539,21 @@ async function handleCreateResource({ type, name, atomicLevel, segment }, cwd) {
       }
 
       case 'api': {
-        if (config.framework !== 'nextjs') return { error: 'API routes are only supported for Next.js projects.' };
+        if (config.framework !== 'nextjs' && config.framework !== 'nuxt') {
+          return { error: 'API routes are only supported for Next.js and Nuxt projects.' };
+        }
         try { validateName(name, 'api'); } catch (e) { return { error: e.message }; }
-        const { files, resolvedName } = apiTemplate(name, config);
-        const dir = path.join(cwd, structure.apiPath(), resolvedName);
-        if (await fs.pathExists(dir)) return { error: `API route "${resolvedName}" already exists.` };
-        await write(files, dir);
+        if (config.framework === 'nuxt') {
+          const { files } = nuxtApiTemplate(name, config);
+          const dir = path.join(cwd, structure.apiPath());
+          await fs.ensureDir(dir);
+          await write(files, dir);
+        } else {
+          const { files, resolvedName } = apiTemplate(name, config);
+          const dir = path.join(cwd, structure.apiPath(), resolvedName);
+          if (await fs.pathExists(dir)) return { error: `API route "${resolvedName}" already exists.` };
+          await write(files, dir);
+        }
         break;
       }
 
@@ -520,14 +566,33 @@ async function handleCreateResource({ type, name, atomicLevel, segment }, cwd) {
         break;
       }
 
-      case 'layout':
+      case 'layout': {
+        if (config.framework === 'nuxt') {
+          if (!name) return { error: 'Name is required for Nuxt layouts.' };
+          try { validateName(name, 'layout'); } catch (e) { return { error: e.message }; }
+          const { files } = nuxtLayoutTemplate(name, config);
+          const dir = path.join(cwd, structure.layoutPath ? structure.layoutPath() : 'layouts');
+          await fs.ensureDir(dir);
+          await write(files, dir);
+        } else if (config.framework === 'nextjs') {
+          const seg = segment || name;
+          if (!seg) return { error: 'Segment name is required.' };
+          const { files } = layoutTemplate(seg, config);
+          const dir = path.join(cwd, 'app', seg);
+          await write(files, dir);
+        } else {
+          return { error: '"layout" is only supported for Next.js and Nuxt projects.' };
+        }
+        break;
+      }
+
       case 'loading':
       case 'error':
       case 'not-found': {
         if (config.framework !== 'nextjs') return { error: `"${type}" is only supported for Next.js projects.` };
         const seg = segment || name;
         if (!seg) return { error: 'Segment name is required.' };
-        const templateFns = { layout: layoutTemplate, loading: loadingTemplate, error: errorTemplate, 'not-found': notFoundTemplate };
+        const templateFns = { loading: loadingTemplate, error: errorTemplate, 'not-found': notFoundTemplate };
         const { files } = templateFns[type](seg, config);
         const dir = path.join(cwd, 'app', seg);
         await write(files, dir);
@@ -535,11 +600,21 @@ async function handleCreateResource({ type, name, atomicLevel, segment }, cwd) {
       }
 
       case 'middleware': {
-        if (config.framework !== 'nextjs') return { error: 'Middleware is only supported for Next.js projects.' };
-        const { files } = middlewareTemplate(config);
-        const firstFile = Object.keys(files)[0];
-        if (await fs.pathExists(path.join(cwd, firstFile))) return { error: 'middleware file already exists.' };
-        await write(files, cwd);
+        if (config.framework === 'nuxt') {
+          if (!name) return { error: 'Name is required for Nuxt middleware.' };
+          try { validateName(name, 'middleware'); } catch (e) { return { error: e.message }; }
+          const { files } = nuxtMiddlewareTemplate(name, config);
+          const dir = path.join(cwd, structure.middlewarePath ? structure.middlewarePath() : 'middleware');
+          await fs.ensureDir(dir);
+          await write(files, dir);
+        } else if (config.framework === 'nextjs') {
+          const { files } = middlewareTemplate(config);
+          const firstFile = Object.keys(files)[0];
+          if (await fs.pathExists(path.join(cwd, firstFile))) return { error: 'middleware file already exists.' };
+          await write(files, cwd);
+        } else {
+          return { error: 'Middleware is only supported for Next.js and Nuxt projects.' };
+        }
         break;
       }
 

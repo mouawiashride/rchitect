@@ -7,6 +7,7 @@ const nextjsStructures = require('../structures/nextjs');
 const vueStructures = require('../structures/vue');
 const svelteStructures = require('../structures/svelte');
 const solidjsStructures = require('../structures/solidjs');
+const nuxtStructures = require('../structures/nuxt');
 const { validateName } = require('../utils/validate');
 const { updateBarrel } = require('../utils/barrel');
 
@@ -28,8 +29,11 @@ const SUPPORTED_TYPES = [
 // Types that require a route segment (lowercase) rather than PascalCase name
 const SEGMENT_TYPES = ['layout', 'loading', 'error', 'not-found'];
 
-// Types that require Next.js
-const NEXTJS_ONLY = ['api', 'layout', 'loading', 'error', 'not-found', 'middleware', 'server-action'];
+// Types that require Next.js only (not Nuxt)
+const NEXTJS_ONLY = ['loading', 'error', 'not-found', 'server-action'];
+
+// Types that require Next.js or Nuxt
+const NEXTJS_OR_NUXT = ['api', 'layout', 'middleware'];
 
 async function loadConfig(cwd) {
   const configPath = path.join(cwd, '.rchitect.json');
@@ -47,6 +51,7 @@ function getStructure(config) {
     vue: vueStructures,
     svelte: svelteStructures,
     solidjs: solidjsStructures,
+    nuxt: nuxtStructures,
   };
   const structures = map[config.framework] || reactStructures;
   const structure = structures[config.pattern];
@@ -93,7 +98,7 @@ async function addComponent(name, config, structure, cwd, templates, opts) {
         { name: 'Molecule', value: 'molecule' },
         { name: 'Organism', value: 'organism' },
         { name: 'Template', value: 'template' },
-        ...(config.framework === 'react' || config.framework === 'vue' || config.framework === 'svelte' || config.framework === 'solidjs' ? [{ name: 'Page', value: 'page' }] : []),
+        ...(config.framework !== 'nextjs' ? [{ name: 'Page', value: 'page' }] : []),
       ],
     }]);
     level = answer.level;
@@ -213,14 +218,24 @@ async function addType(name, config, structure, cwd, templates) {
 }
 
 async function addApi(name, config, structure, cwd, templates) {
-  const { apiTemplate } = templates;
   validateName(name, 'api');
 
-  if (config.framework !== 'nextjs') {
-    console.log(chalk.red('\n  Error: API routes are only supported for Next.js projects.\n'));
-    process.exit(1);
+  if (config.framework === 'nuxt') {
+    const { nuxtApiTemplate } = templates;
+    const { files, resolvedName } = nuxtApiTemplate(name, config);
+    const apiDir = path.join(cwd, structure.apiPath());
+    await fs.ensureDir(apiDir);
+    const firstFile = Object.keys(files)[0];
+    if (await fs.pathExists(path.join(apiDir, firstFile))) {
+      console.log(chalk.red(`\n  Error: API handler "${resolvedName}" already exists.\n`));
+      process.exit(1);
+    }
+    await writeFiles(files, apiDir, cwd);
+    console.log(chalk.bold.green(`\n  Nuxt API handler "server/api/${resolvedName}" created successfully!\n`));
+    return;
   }
 
+  const { apiTemplate } = templates;
   const { files, resolvedName } = apiTemplate(name, config);
   const apiDir = path.join(cwd, structure.apiPath(), resolvedName);
 
@@ -247,6 +262,24 @@ async function addFeature(name, config, structure, cwd, templates) {
 
   await writeFiles(files, featureDir, cwd);
   console.log(chalk.bold.green(`\n  Feature "${resolvedName}" scaffolded successfully!\n`));
+}
+
+async function addNuxtLayout(name, config, structure, cwd, templates) {
+  const { nuxtLayoutTemplate } = templates;
+  validateName(name, 'layout');
+
+  const { files, resolvedName } = nuxtLayoutTemplate(name, config);
+  const layoutDir = path.join(cwd, structure.layoutPath());
+  await fs.ensureDir(layoutDir);
+  const firstFile = Object.keys(files)[0];
+
+  if (await fs.pathExists(path.join(layoutDir, firstFile))) {
+    console.log(chalk.red(`\n  Error: Layout "${resolvedName}" already exists.\n`));
+    process.exit(1);
+  }
+
+  await writeFiles(files, layoutDir, cwd);
+  console.log(chalk.bold.green(`\n  Nuxt layout "${resolvedName}" created successfully!\n`));
 }
 
 // ── Next.js App Router handlers ───────────────────────────────────────────────
@@ -292,15 +325,29 @@ async function addAppRouterFile(name, type, config, cwd, templates) {
   console.log(chalk.bold.green(`\n  ${type} for segment "${name}" created successfully!\n`));
 }
 
-async function addMiddleware(config, cwd, templates) {
-  const { middlewareTemplate } = templates;
-
-  if (config.framework !== 'nextjs') {
-    console.log(chalk.red('\n  Error: Middleware is only supported for Next.js projects.\n'));
-    process.exit(1);
+async function addMiddleware(name, config, structure, cwd, templates) {
+  if (config.framework === 'nuxt') {
+    const { nuxtMiddlewareTemplate } = templates;
+    if (!name) {
+      console.log(chalk.red('\n  Error: Name is required for Nuxt middleware.\n'));
+      process.exit(1);
+    }
+    validateName(name, 'middleware');
+    const { files, resolvedName } = nuxtMiddlewareTemplate(name, config);
+    const middlewareDir = path.join(cwd, structure.middlewarePath());
+    await fs.ensureDir(middlewareDir);
+    const firstFile = Object.keys(files)[0];
+    if (await fs.pathExists(path.join(middlewareDir, firstFile))) {
+      console.log(chalk.red(`\n  Error: Middleware "${resolvedName}" already exists.\n`));
+      process.exit(1);
+    }
+    await writeFiles(files, middlewareDir, cwd);
+    console.log(chalk.bold.green(`\n  Nuxt middleware "${resolvedName}" created successfully!\n`));
+    return;
   }
 
-  const { files, resolvedName } = middlewareTemplate(config);
+  const { middlewareTemplate } = templates;
+  const { files } = middlewareTemplate(config);
   const firstFile = Object.keys(files)[0];
 
   if (await fs.pathExists(path.join(cwd, firstFile))) {
@@ -343,18 +390,23 @@ async function addCommand(type, name, cmd) {
     process.exit(1);
   }
 
-  // middleware doesn't need a name; all others do
+  // Next.js middleware doesn't need a name; all others do
+  // (Nuxt middleware name check is done inside addMiddleware)
   if (type !== 'middleware' && !name) {
     console.log(chalk.red(`\n  Error: Name is required for "${type}".\n`));
     process.exit(1);
   }
 
-  // Validate Next.js-only types early
-  if (NEXTJS_ONLY.includes(type)) {
+  // Validate framework-restricted types early
+  if (NEXTJS_ONLY.includes(type) || NEXTJS_OR_NUXT.includes(type)) {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
-    if (config.framework !== 'nextjs') {
+    if (NEXTJS_ONLY.includes(type) && config.framework !== 'nextjs') {
       console.log(chalk.red(`\n  Error: "${type}" is only supported for Next.js projects.\n`));
+      process.exit(1);
+    }
+    if (NEXTJS_OR_NUXT.includes(type) && config.framework !== 'nextjs' && config.framework !== 'nuxt') {
+      console.log(chalk.red(`\n  Error: "${type}" is only supported for Next.js and Nuxt projects.\n`));
       process.exit(1);
     }
   }
@@ -375,11 +427,13 @@ async function addCommand(type, name, cmd) {
     case 'type':         return addType(name, config, structure, cwd, templates);
     case 'api':          return addApi(name, config, structure, cwd, templates);
     case 'feature':      return addFeature(name, config, structure, cwd, templates);
-    case 'layout':       return addAppRouterFile(name, 'layout', config, cwd, templates);
+    case 'layout':
+      if (config.framework === 'nuxt') return addNuxtLayout(name, config, structure, cwd, templates);
+      return addAppRouterFile(name, 'layout', config, cwd, templates);
     case 'loading':      return addAppRouterFile(name, 'loading', config, cwd, templates);
     case 'error':        return addAppRouterFile(name, 'error', config, cwd, templates);
     case 'not-found':    return addAppRouterFile(name, 'not-found', config, cwd, templates);
-    case 'middleware':   return addMiddleware(config, cwd, templates);
+    case 'middleware':   return addMiddleware(name, config, structure, cwd, templates);
     case 'server-action': return addServerAction(name, config, cwd, templates);
   }
 }

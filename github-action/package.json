@@ -1,0 +1,17 @@
+{
+  "name": "rchitect-action",
+  "version": "1.0.0",
+  "description": "GitHub Action for Rchitect architecture compliance checks",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node esbuild.js"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^6.0.0",
+    "fs-extra": "^11.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

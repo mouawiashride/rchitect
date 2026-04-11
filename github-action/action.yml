@@ -1,0 +1,29 @@
+name: 'Rchitect Architecture Check'
+description: 'Validates your project structure against the Rchitect architecture pattern defined in .rchitect.json'
+author: 'Mouawia Sharedi'
+
+inputs:
+  fail-below:
+    description: 'Fail the check if compliance falls below this percentage (0–100)'
+    required: false
+    default: '100'
+  token:
+    description: 'GitHub token for posting PR comments'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  compliance:
+    description: 'Compliance percentage (0–100)'
+  folders-present:
+    description: 'Number of expected folders that exist'
+  folders-expected:
+    description: 'Total number of expected folders'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+
+branding:
+  icon: 'layers'
+  color: 'blue'

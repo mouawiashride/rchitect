@@ -15,6 +15,7 @@ const syncCommand = require('./commands/sync');
 const migrateCommand = require('./commands/migrate');
 const ejectCommand = require('./commands/eject');
 const importCommand = require('./commands/import');
+const statsCommand = require('./commands/stats');
 
 program
   .name('rchitect')
@@ -100,5 +101,11 @@ program
   .command('import')
   .description('Detect an existing project\'s structure and generate .rchitect.json')
   .action(importCommand);
+
+program
+  .command('stats')
+  .description('Show architecture compliance — which expected folders are present')
+  .option('--json', 'Output results as JSON (useful for CI/GitHub Action)')
+  .action(statsCommand);
 
 program.parse();
