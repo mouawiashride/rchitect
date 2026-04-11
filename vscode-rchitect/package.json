@@ -1,0 +1,112 @@
+{
+  "name": "vscode-rchitect",
+  "displayName": "Rchitect",
+  "description": "Architecture scaffolding for React, Next.js, Vue 3, Svelte, and SolidJS. Create components, hooks, stores, and features right from VS Code.",
+  "version": "1.0.0",
+  "publisher": "mouawiasharedi",
+  "author": "Mouawia Sharedi <mooawia12@windowslive.com> (https://mouawiasharedi.vercel.app/)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mouawiashride/rchitect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mouawiashride/rchitect/issues"
+  },
+  "homepage": "https://github.com/mouawiashride/rchitect#readme",
+  "keywords": [
+    "react", "nextjs", "vue", "svelte", "solidjs",
+    "scaffold", "architecture", "atomic-design",
+    "feature-based", "ddd", "mvc", "generator"
+  ],
+  "categories": ["Snippets", "Other"],
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "activationEvents": [
+    "workspaceContains:.rchitect.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "rchitect.addResource",
+        "title": "Add Resource",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.addComponent",
+        "title": "Add Component",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.addHook",
+        "title": "Add Hook / Composable",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.addPage",
+        "title": "Add Page",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.addStore",
+        "title": "Add Store",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.addService",
+        "title": "Add Service",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.addFeature",
+        "title": "Add Feature",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.openConfig",
+        "title": "Open Config (.rchitect.json)",
+        "category": "Rchitect"
+      },
+      {
+        "command": "rchitect.runDoctor",
+        "title": "Doctor (validate folders)",
+        "category": "Rchitect"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "rchitect.addResource",
+          "when": "explorerResourceIsFolder",
+          "group": "2_workspace@1"
+        }
+      ],
+      "commandPalette": [
+        { "command": "rchitect.addResource" },
+        { "command": "rchitect.addComponent" },
+        { "command": "rchitect.addHook" },
+        { "command": "rchitect.addPage" },
+        { "command": "rchitect.addStore" },
+        { "command": "rchitect.addService" },
+        { "command": "rchitect.addFeature" },
+        { "command": "rchitect.openConfig" },
+        { "command": "rchitect.runDoctor" }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "build:watch": "node esbuild.js --watch",
+    "package": "npx @vscode/vsce package --no-dependencies",
+    "publish": "npx @vscode/vsce publish --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.0.0"
+  }
+}
