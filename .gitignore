@@ -16,8 +16,9 @@ tests/.tmp-*/
 # Test coverage
 coverage/
 
-# Claude Code local settings
-.claude/
+# Claude Code local/sensitive settings — never commit
+.claude/settings.local.json
+.claude/settings.json
 
 # Local task settings
 tasks/settings.local.json
