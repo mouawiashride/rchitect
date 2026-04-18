@@ -8,6 +8,12 @@ const vueStructures = require('../structures/vue');
 const svelteStructures = require('../structures/svelte');
 const solidjsStructures = require('../structures/solidjs');
 const nuxtStructures = require('../structures/nuxt');
+const remixStructures = require('../structures/remix');
+const angularStructures = require('../structures/angular');
+const astroStructures = require('../structures/astro');
+const sveltekitStructures = require('../structures/sveltekit');
+const qwikStructures = require('../structures/qwik');
+const expoStructures = require('../structures/expo');
 const { detectFramework } = require('../utils/detect');
 const { generatePathAliases } = require('../utils/pathAlias');
 
@@ -28,7 +34,7 @@ async function initCommand(options) {
   const detected = await detectFramework(cwd);
   let framework;
 
-  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS', nuxt: 'Nuxt 3' };
+  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS', nuxt: 'Nuxt 3', remix: 'Remix', angular: 'Angular', astro: 'Astro', sveltekit: 'SvelteKit', qwik: 'Qwik', expo: 'Expo / React Native' };
 
   if (detected) {
     console.log(chalk.green('  Detected: ') + chalk.white(frameworkLabels[detected] || detected) + '\n');
@@ -51,8 +57,14 @@ async function initCommand(options) {
         { name: 'Next.js', value: 'nextjs' },
         { name: 'Vue 3', value: 'vue' },
         { name: 'Nuxt 3', value: 'nuxt' },
-        { name: 'Svelte / SvelteKit', value: 'svelte' },
+        { name: 'Svelte', value: 'svelte' },
+        { name: 'SvelteKit', value: 'sveltekit' },
         { name: 'SolidJS', value: 'solidjs' },
+        { name: 'Remix', value: 'remix' },
+        { name: 'Angular', value: 'angular' },
+        { name: 'Astro', value: 'astro' },
+        { name: 'Qwik', value: 'qwik' },
+        { name: 'Expo / React Native', value: 'expo' },
       ],
     }]);
     framework = answer.framework;
@@ -135,6 +147,12 @@ async function initCommand(options) {
     svelte: svelteStructures,
     solidjs: solidjsStructures,
     nuxt: nuxtStructures,
+    remix: remixStructures,
+    angular: angularStructures,
+    astro: astroStructures,
+    sveltekit: sveltekitStructures,
+    qwik: qwikStructures,
+    expo: expoStructures,
   };
   const structures = structureMap[framework] || reactStructures;
   const structure = structures[pattern];
@@ -193,6 +211,7 @@ async function initCommand(options) {
     console.log(chalk.bold.green('\n  Done! Architecture folders are ready.\n'));
     console.log(chalk.gray('  Add resources with:'));
     const hookLabel = (framework === 'vue' || framework === 'nuxt' || framework === 'svelte') ? 'composable' : 'hook';
+    const isAngular = framework === 'angular';
     console.log(chalk.cyan('    rchitect add component <Name>'));
     console.log(chalk.cyan(`    rchitect add ${hookLabel} <Name>`));
     console.log(chalk.cyan('    rchitect add page <Name>'));
@@ -214,6 +233,17 @@ async function initCommand(options) {
       console.log(chalk.cyan('    rchitect add api <Name>          (Nuxt only)'));
       console.log(chalk.cyan('    rchitect add layout <Name>       (Nuxt only)'));
       console.log(chalk.cyan('    rchitect add middleware <Name>   (Nuxt only)'));
+    }
+    if (framework === 'remix') {
+      console.log(chalk.cyan('    rchitect add route <Name>        (creates loader + action)'));
+    }
+    if (isAngular) {
+      console.log(chalk.cyan('    rchitect add service <Name>      (Angular service)'));
+      console.log(chalk.cyan('    rchitect add store <Name>        (BehaviorSubject store)'));
+    }
+    if (framework === 'astro') {
+      console.log(chalk.cyan('    rchitect add layout <Name>       (Astro layout)'));
+      console.log(chalk.cyan('    rchitect add route <Name>        (Astro page route)'));
     }
     console.log('');
   }

@@ -91,3 +91,88 @@ export function nuxtMiddlewareTemplate(
   name: string,
   config: RchitectConfig
 ): { files: Record<string, string>; resolvedName: string };
+
+export function angularComponentTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function angularServiceTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function angularStoreTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function angularFeatureTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function astroComponentTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function astroPageTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function astroUtilTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function astroFeatureTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function formTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function modalTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function providerTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function routeTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function guardTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function schemaTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function queryTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function mutationTemplate(
+  name: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };
+
+export function i18nTemplate(
+  key: string,
+  config: RchitectConfig
+): { files: Record<string, string>; resolvedName: string };

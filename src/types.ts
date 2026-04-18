@@ -1,4 +1,4 @@
-export type Framework = 'react' | 'nextjs' | 'vue' | 'svelte' | 'solidjs' | 'nuxt';
+export type Framework = 'react' | 'nextjs' | 'vue' | 'svelte' | 'solidjs' | 'nuxt' | 'remix' | 'angular' | 'astro' | 'sveltekit' | 'qwik' | 'expo';
 export type Pattern = 'atomic-design' | 'feature-based' | 'domain-driven' | 'mvc-like';
 export type Language = 'typescript' | 'javascript';
 export type Styling = 'css' | 'scss' | 'tailwind';
@@ -17,7 +17,7 @@ export interface RchitectConfig {
 }
 
 export interface Extensions {
-  compExt: 'tsx' | 'jsx' | 'vue' | 'svelte';
+  compExt: 'tsx' | 'jsx' | 'vue' | 'svelte' | 'astro' | 'ts';
   scriptExt: 'ts' | 'js';
   styleExt: 'css' | 'scss';
 }
@@ -62,4 +62,8 @@ export interface Structure {
   serverActionPath?: () => string;
   middlewarePath?: () => string;
   layoutPath?: () => string;
+  guardPath?: () => string;
+  schemaPath?: () => string;
+  queryPath?: () => string;
+  i18nPath?: () => string;
 }

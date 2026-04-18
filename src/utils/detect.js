@@ -16,9 +16,15 @@ async function detectFramework(cwd) {
 
   if (allDeps['next']) return 'nextjs';
   if (allDeps['nuxt']) return 'nuxt';
+  if (allDeps['@remix-run/react'] || allDeps['@remix-run/node']) return 'remix';
+  if (allDeps['@angular/core']) return 'angular';
+  if (allDeps['astro']) return 'astro';
+  if (allDeps['expo'] || allDeps['expo-router']) return 'expo';
+  if (allDeps['@builder.io/qwik'] || allDeps['@builder.io/qwik-city']) return 'qwik';
+  if (allDeps['@sveltejs/kit']) return 'sveltekit';
   if (allDeps['react']) return 'react';
   if (allDeps['vue']) return 'vue';
-  if (allDeps['svelte'] || allDeps['@sveltejs/kit']) return 'svelte';
+  if (allDeps['svelte']) return 'svelte';
   if (allDeps['solid-js']) return 'solidjs';
 
   return null;

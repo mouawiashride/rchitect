@@ -611,9 +611,9 @@ describe('detectFramework for new frameworks', () => {
     expect(await detectFramework(testDir)).toBe('svelte');
   });
 
-  it('detects svelte from @sveltejs/kit', async () => {
+  it('detects sveltekit from @sveltejs/kit', async () => {
     await fs.writeJson(path.join(testDir, 'package.json'), { devDependencies: { '@sveltejs/kit': '2.0.0' } });
-    expect(await detectFramework(testDir)).toBe('svelte');
+    expect(await detectFramework(testDir)).toBe('sveltekit');
   });
 
   it('detects solidjs from solid-js', async () => {

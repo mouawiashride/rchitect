@@ -6,14 +6,14 @@ This file is read by Claude Code at the start of every session. Follow every rul
 
 ## Project Snapshot
 
-**Rchitect** is a published npm CLI (`rchitect@1.6.0`) that scaffolds React, Next.js, Vue 3, Nuxt 3, Svelte, and SolidJS projects, and ships a built-in MCP server (`rchitect-mcp`) for AI assistant integration.
+**Rchitect** is a published npm CLI (`rchitect@1.8.0`) that scaffolds React, Next.js, Vue 3, Nuxt 3, Svelte, SvelteKit, SolidJS, Remix, Angular, Astro, Qwik, and Expo projects, and ships a built-in MCP server (`rchitect-mcp`) for AI assistant integration.
 
 - **Runtime:** Node.js, CommonJS (`require`/`module.exports`) — no ESM anywhere
 - **CJS-pinned deps:** chalk@4, inquirer@8 — do NOT upgrade to v5/v9 (ESM-only, breaks everything)
 - **Zod:** pinned to v3 (`^3.25`) — do NOT upgrade to v4 (breaks MCP SDK)
 - **Tests:** Jest + ts-jest, TypeScript test files only — `npm test` must always pass
 - **Published:** npmjs.com/package/rchitect — bump version before every `npm publish`
-- **612 tests** across 24 suites — all must stay green after any change
+- **739 tests** across 28 suites — all must stay green after any change
 - **VS Code Extension:** `vscode-rchitect/` — published as GitHub Release `vscode-v1.0.0`
 - **GitHub Action:** `github-action/` — architecture compliance check for PRs
 

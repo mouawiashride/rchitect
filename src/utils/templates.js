@@ -8,6 +8,8 @@ function getExtensions(config) {
   let compExt;
   if (config.framework === 'vue' || config.framework === 'nuxt') compExt = 'vue';
   else if (config.framework === 'svelte') compExt = 'svelte';
+  else if (config.framework === 'astro') compExt = 'astro';
+  else if (config.framework === 'angular') compExt = 'ts';
   else compExt = config.language === 'typescript' ? 'tsx' : 'jsx';
   return { compExt, scriptExt, styleExt };
 }
@@ -55,8 +57,11 @@ describe('${name}', () => {
 
 function componentTemplate(name, config, level) {
   if (config.framework === 'vue' || config.framework === 'nuxt') return vueComponentTemplate(name, config, level);
-  if (config.framework === 'svelte') return svelteComponentTemplate(name, config, level);
+  if (config.framework === 'svelte' || config.framework === 'sveltekit') return svelteComponentTemplate(name, config, level);
   if (config.framework === 'solidjs') return solidComponentTemplate(name, config, level);
+  if (config.framework === 'angular') return angularComponentTemplate(name, config).files;
+  if (config.framework === 'astro') return astroComponentTemplate(name, config).files;
+  if (config.framework === 'qwik') return qwikComponentTemplate(name, config, level);
   const { compExt, scriptExt, styleExt } = getExtensions(config);
   const isTailwind = config.styling === 'tailwind';
   const useClient = config.framework === 'nextjs' && config.useClient;
@@ -105,8 +110,10 @@ export default ${name};
 
 function hookTemplate(name, config) {
   if (config.framework === 'vue' || config.framework === 'nuxt') return vueComposableTemplate(name, config);
-  if (config.framework === 'svelte') return svelteComposableTemplate(name, config);
+  if (config.framework === 'svelte' || config.framework === 'sveltekit') return svelteComposableTemplate(name, config);
   if (config.framework === 'solidjs') return solidHookTemplate(name, config);
+  if (config.framework === 'angular') return angularServiceTemplate(name, config);
+  if (config.framework === 'astro') return astroUtilTemplate(name, config);
   const { scriptExt } = getExtensions(config);
   const camel = toCamelCase(name);
   const hookName = camel.startsWith('use') ? camel : `use${name}`;
@@ -149,8 +156,15 @@ describe('${hookName}', () => {
 
 function pageTemplate(name, config) {
   if (config.framework === 'vue' || config.framework === 'nuxt') return vuePageTemplate(name, config);
-  if (config.framework === 'svelte') return sveltePageTemplate(name, config);
+  if (config.framework === 'svelte' || config.framework === 'sveltekit') return sveltePageTemplate(name, config);
   if (config.framework === 'solidjs') return solidPageTemplate(name, config);
+  if (config.framework === 'angular') return angularComponentTemplate(name, config).files;
+  if (config.framework === 'astro') return astroPageTemplate(name, config).files;
+  if (config.framework === 'qwik') {
+    const isTS = config.language === 'typescript';
+    const ext = isTS ? 'tsx' : 'jsx';
+    return { [`index.${ext}`]: `import { component$ } from '@builder.io/qwik';\n\nexport default component$(() => {\n  return <div><h1>${name}</h1></div>;\n});\n` };
+  }
   const { compExt, scriptExt, styleExt } = getExtensions(config);
   const isTailwind = config.styling === 'tailwind';
   const useClient = config.framework === 'nextjs' && config.useClient;
@@ -205,6 +219,7 @@ describe('${name}Page', () => {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 function serviceTemplate(name, config) {
+  if (config.framework === 'angular') return angularServiceTemplate(name, config);
   const { scriptExt } = getExtensions(config);
   const camel = toCamelCase(name);
   const serviceName = `${camel}Service`;
@@ -241,6 +256,8 @@ function contextTemplate(name, config) {
   if (config.framework === 'vue' || config.framework === 'nuxt') return vueContextTemplate(name, config);
   if (config.framework === 'svelte') return svelteContextTemplate(name, config);
   if (config.framework === 'solidjs') return solidContextTemplate(name, config);
+  if (config.framework === 'angular') return angularServiceTemplate(name, config);
+  if (config.framework === 'astro') return astroUtilTemplate(name, config);
   const { compExt, scriptExt } = getExtensions(config);
   const useClient = config.framework === 'nextjs';
   const isTS = config.language === 'typescript';
@@ -345,6 +362,8 @@ function storeTemplate(name, config) {
   if (config.framework === 'vue' || config.framework === 'nuxt') return vuePiniaStoreTemplate(name, config);
   if (config.framework === 'svelte') return svelteStoreTemplate(name, config);
   if (config.framework === 'solidjs') return solidStoreTemplate(name, config);
+  if (config.framework === 'angular') return angularStoreTemplate(name, config);
+  if (config.framework === 'astro') return astroUtilTemplate(name, config);
   const { scriptExt } = getExtensions(config);
   const storeName = `use${name}Store`;
   const isTS = config.language === 'typescript';
@@ -492,6 +511,8 @@ function featureTemplate(name, config) {
   if (config.framework === 'vue' || config.framework === 'nuxt') return vueFeatureTemplate(name, config);
   if (config.framework === 'svelte') return svelteFeatureTemplate(name, config);
   if (config.framework === 'solidjs') return solidFeatureTemplate(name, config);
+  if (config.framework === 'angular') return angularFeatureTemplate(name, config);
+  if (config.framework === 'astro') return astroFeatureTemplate(name, config);
   const { compExt, scriptExt, styleExt } = getExtensions(config);
   const isTailwind = config.styling === 'tailwind';
   const isTS = config.language === 'typescript';
@@ -1345,6 +1366,39 @@ describe('${name}', () => {
   return files;
 }
 
+function qwikComponentTemplate(name, config, level) {
+  const isTS = config.language === 'typescript';
+  const isTailwind = config.styling === 'tailwind';
+  const styleExt = config.styling === 'scss' ? 'scss' : 'css';
+  const ext = isTS ? 'tsx' : 'jsx';
+  const cls = isTailwind ? `class="container"` : `class={styles.container}`;
+
+  let body = `      <div ${cls}>${name}</div>`;
+  if (config.pattern === 'atomic-design' && level) {
+    const bodies = {
+      atom: `      <span ${cls}>${name}</span>`,
+      molecule: `      <div ${cls}>\n        <span>${name}</span>\n      </div>`,
+      organism: `      <section ${cls}>\n        <h2>${name}</h2>\n      </section>`,
+      template: `      <div ${cls}>\n        <main>${name}</main>\n      </div>`,
+    };
+    body = bodies[level] || body;
+  }
+
+  const styleImport = isTailwind ? '' : `import styles from './${name}.module.${styleExt}';\n`;
+  const propsType = isTS ? `\nexport interface ${name}Props {}\n` : '';
+  const propsArg = isTS ? `${name}Props` : '';
+  const propsGeneric = isTS ? `<${name}Props>` : '';
+
+  const content = `import { component$ } from '@builder.io/qwik';\n${styleImport}${propsType}\nexport const ${name} = component$${propsGeneric}((props) => {\n  return (\n${body}\n  );\n});\n\nexport default ${name};\n`;
+
+  const files = {
+    [`${name}.${ext}`]: content,
+    [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}';\n`,
+  };
+  if (!isTailwind) files[`${name}.module.${styleExt}`] = `.container {}\n`;
+  return files;
+}
+
 function solidHookTemplate(name, config) {
   const { scriptExt } = getExtensions(config);
   const camel = toCamelCase(name);
@@ -1677,6 +1731,482 @@ function nuxtMiddlewareTemplate(name, config) {
   };
 }
 
+// ── Angular templates ─────────────────────────────────────────────────────────
+
+function angularComponentTemplate(name, config) {
+  const isTailwind = config.styling === 'tailwind';
+  const styleExt = config.styling === 'scss' ? 'scss' : 'css';
+  const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+  const styleUrl = isTailwind ? '' : `  styleUrls: ['./${selector}.component.${styleExt}'],\n`;
+  const styleFile = isTailwind ? {} : { [`${selector}.component.${styleExt}`]: `.${selector} {}\n` };
+  const bodyClass = isTailwind ? `class="container"` : `class="${selector}"`;
+
+  const tsContent = `import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-${selector}',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './${selector}.component.html',
+${styleUrl}})
+export class ${name}Component {}
+`;
+
+  const htmlContent = `<div ${bodyClass}>
+  ${name}
+</div>
+`;
+
+  const files = {
+    [`${selector}.component.ts`]: tsContent,
+    [`${selector}.component.html`]: htmlContent,
+    [`index.ts`]: `export { ${name}Component } from './${selector}.component';\n`,
+    ...styleFile,
+  };
+
+  return { files, resolvedName: `${name}Component` };
+}
+
+function angularServiceTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const camel = toCamelCase(name);
+  const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+
+  const content = isTS
+    ? `import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ${name}Service {
+  // Add state and methods here
+}
+`
+    : `import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ${name}Service {
+  // Add methods here
+}
+`;
+
+  return {
+    files: {
+      [`${selector}.service.ts`]: content,
+      [`index.ts`]: `export { ${name}Service } from './${selector}.service';\n`,
+    },
+    resolvedName: `${name}Service`,
+  };
+}
+
+function angularStoreTemplate(name, config) {
+  const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+
+  const content = `import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+
+export interface ${name}State {
+  // Add state fields here
+}
+
+const initialState: ${name}State = {
+  // Set initial values here
+};
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ${name}Store {
+  private state$ = new BehaviorSubject<${name}State>(initialState);
+  readonly state: Observable<${name}State> = this.state$.asObservable();
+
+  get snapshot(): ${name}State {
+    return this.state$.getValue();
+  }
+
+  setState(partial: Partial<${name}State>): void {
+    this.state$.next({ ...this.snapshot, ...partial });
+  }
+}
+`;
+
+  return {
+    files: {
+      [`${selector}.store.ts`]: content,
+      [`index.ts`]: `export { ${name}Store } from './${selector}.store';\nexport type { ${name}State } from './${selector}.store';\n`,
+    },
+    resolvedName: `${name}Store`,
+  };
+}
+
+function angularFeatureTemplate(name, config) {
+  const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+  const isTailwind = config.styling === 'tailwind';
+  const styleExt = config.styling === 'scss' ? 'scss' : 'css';
+  const bodyClass = isTailwind ? `class="container"` : `class="${selector}-view"`;
+  const styleUrl = isTailwind ? '' : `  styleUrls: ['./${selector}-view.component.${styleExt}'],\n`;
+
+  const componentTs = `import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-${selector}-view',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './${selector}-view.component.html',
+${styleUrl}})
+export class ${name}ViewComponent {}
+`;
+
+  const componentHtml = `<div ${bodyClass}>
+  <h1>${name}</h1>
+</div>
+`;
+
+  const serviceContent = `import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ${name}Service {
+  // Add ${name} service methods here
+}
+`;
+
+  const files = {
+    [`components/${selector}-view/${selector}-view.component.ts`]: componentTs,
+    [`components/${selector}-view/${selector}-view.component.html`]: componentHtml,
+    [`services/${toCamelCase(name)}Service/${selector}.service.ts`]: serviceContent,
+    [`index.ts`]: `export { ${name}ViewComponent } from './components/${selector}-view/${selector}-view.component';\nexport { ${name}Service } from './services/${toCamelCase(name)}Service/${selector}.service';\n`,
+  };
+
+  if (!isTailwind) {
+    files[`components/${selector}-view/${selector}-view.component.${styleExt}`] = `.${selector}-view {}\n`;
+  }
+
+  return { files, resolvedName: name };
+}
+
+// ── Astro templates ────────────────────────────────────────────────────────────
+
+function astroComponentTemplate(name, config) {
+  const isTailwind = config.styling === 'tailwind';
+  const styleExt = config.styling === 'scss' ? 'scss' : 'css';
+  const bodyClass = isTailwind ? `class="container"` : `class="${name}"`;
+  const styleBlock = isTailwind ? '' : `\n<style>\n  .${name} {}\n</style>\n`;
+
+  const content = `---
+// ${name} component
+interface Props {
+  // Add props here
+}
+const { } = Astro.props;
+---
+
+<div ${bodyClass}>
+  ${name}
+</div>${styleBlock}`;
+
+  const files = {
+    [`${name}.astro`]: content,
+  };
+
+  return { files, resolvedName: name };
+}
+
+function astroPageTemplate(name, config) {
+  const isTailwind = config.styling === 'tailwind';
+  const bodyClass = isTailwind ? `class="container"` : `class="page"`;
+
+  const content = `---
+// ${name} page
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${name}</title>
+  </head>
+  <body>
+    <div ${bodyClass}>
+      <h1>${name}</h1>
+    </div>
+  </body>
+</html>
+`;
+
+  return {
+    files: { [`${name}.astro`]: content },
+    resolvedName: name,
+  };
+}
+
+function astroUtilTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const camel = toCamelCase(name);
+
+  const content = isTS
+    ? `// ${name} utility
+export function ${camel}(): void {
+  // Add logic here
+}
+`
+    : `// ${name} utility
+export function ${camel}() {
+  // Add logic here
+}
+`;
+
+  return {
+    files: {
+      [`${camel}.${ext}`]: content,
+      [`index.${ext}`]: `export { ${camel} } from './${camel}';\n`,
+    },
+    resolvedName: camel,
+  };
+}
+
+function astroFeatureTemplate(name, config) {
+  const isTailwind = config.styling === 'tailwind';
+  const camel = toCamelCase(name);
+  const bodyClass = isTailwind ? `class="container"` : `class="${name}"`;
+  const styleBlock = isTailwind ? '' : `\n<style>\n  .${name} {}\n</style>\n`;
+
+  const componentContent = `---
+// ${name} feature component
+---
+
+<div ${bodyClass}>
+  <h1>${name}</h1>
+</div>${styleBlock}`;
+
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+
+  const utilContent = isTS
+    ? `// ${name} utilities\nexport function use${name}() {\n  return {};\n}\n`
+    : `// ${name} utilities\nexport function use${name}() {\n  return {};\n}\n`;
+
+  const files = {
+    [`components/${name}View/${name}View.astro`]: componentContent,
+    [`utils/${camel}/${camel}.${ext}`]: utilContent,
+    [`index.${ext}`]: `export { use${name} } from './utils/${camel}/${camel}';\n`,
+  };
+
+  return { files, resolvedName: name };
+}
+
+// ── Form template ─────────────────────────────────────────────────────────────
+
+function formTemplate(name, config) {
+  if (name.endsWith('Form')) name = name.slice(0, -4);
+  const isTS = config.language === 'typescript';
+  const isTailwind = config.styling === 'tailwind';
+  const styleExt = config.styling === 'scss' ? 'scss' : 'css';
+
+  if (config.framework === 'vue' || config.framework === 'nuxt') {
+    const scriptLang = isTS ? ` lang="ts"` : '';
+    const bodyClass = isTailwind ? `class="form"` : `class="${name}"`;
+    const styleBlock = isTailwind ? '' : `\n<style scoped>\n.${name} {}\n</style>\n`;
+    const typeBlock = isTS ? `\ninterface ${name}Data {\n  // Add form fields here\n}\n` : '';
+    const content = `<script setup${scriptLang}>\nimport { reactive } from 'vue';\n${typeBlock}\nconst form = reactive({\n  // Add form fields here\n});\n\nfunction handleSubmit() {\n  // Handle form submission\n}\n</script>\n\n<template>\n  <form ${bodyClass} @submit.prevent="handleSubmit">\n    <!-- Add form fields here -->\n    <button type="submit">Submit</button>\n  </form>\n</template>${styleBlock}`;
+    return { files: { [`${name}Form.vue`]: content, [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}Form.vue';\n` }, resolvedName: `${name}Form` };
+  }
+
+  if (config.framework === 'svelte') {
+    const scriptLang = isTS ? ` lang="ts"` : '';
+    const typeBlock = isTS ? `\n  interface ${name}Data {}\n  let form: ${name}Data = $state({});` : `\n  let form = $state({});`;
+    const content = `<script${scriptLang}>${typeBlock}\n\n  function handleSubmit(e: SubmitEvent) {\n    e.preventDefault();\n    // Handle form submission\n  }\n</script>\n\n<form on:submit={handleSubmit}>\n  <!-- Add form fields here -->\n  <button type="submit">Submit</button>\n</form>`;
+    return { files: { [`${name}Form.svelte`]: content }, resolvedName: `${name}Form` };
+  }
+
+  if (config.framework === 'solidjs') {
+    const ext = isTS ? 'tsx' : 'jsx';
+    const typeAnnotation = isTS ? `: Component` : '';
+    const content = `import { Component, createSignal } from 'solid-js';\n${isTS ? `\ninterface ${name}Data {}\n` : ''}\nconst ${name}Form${typeAnnotation} = () => {\n  const [formData, setFormData] = createSignal({});\n\n  const handleSubmit = (e: Event) => {\n    e.preventDefault();\n    // Handle form submission\n  };\n\n  return (\n    <form onSubmit={handleSubmit}>\n      {/* Add form fields here */}\n      <button type="submit">Submit</button>\n    </form>\n  );\n};\n\nexport default ${name}Form;\n`;
+    return { files: { [`${name}Form.${ext}`]: content, [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}Form';\n` }, resolvedName: `${name}Form` };
+  }
+
+  if (config.framework === 'angular') {
+    const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+    const tsContent = `import { Component } from '@angular/core';\nimport { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';\n\n@Component({\n  selector: 'app-${selector}-form',\n  standalone: true,\n  imports: [ReactiveFormsModule],\n  templateUrl: './${selector}-form.component.html',\n})\nexport class ${name}FormComponent {\n  form = new FormGroup({\n    // Add form controls here\n  });\n\n  onSubmit() {\n    if (this.form.valid) {\n      // Handle submission\n    }\n  }\n}\n`;
+    const htmlContent = `<form [formGroup]="form" (ngSubmit)="onSubmit()">\n  <!-- Add form fields here -->\n  <button type="submit" [disabled]="form.invalid">Submit</button>\n</form>\n`;
+    return { files: { [`${selector}-form.component.ts`]: tsContent, [`${selector}-form.component.html`]: htmlContent, [`index.ts`]: `export { ${name}FormComponent } from './${selector}-form.component';\n` }, resolvedName: `${name}FormComponent` };
+  }
+
+  if (config.framework === 'astro') {
+    const content = `---\n// ${name} form\n---\n\n<form class="${name}" method="POST">\n  <!-- Add form fields here -->\n  <button type="submit">Submit</button>\n</form>\n${isTailwind ? '' : `\n<style>\n  .${name} {}\n</style>`}`;
+    return { files: { [`${name}Form.astro`]: content }, resolvedName: `${name}Form` };
+  }
+
+  // React / Next.js / Remix
+  const ext = isTS ? 'tsx' : 'jsx';
+  const useClient = config.framework === 'nextjs' && config.useClient ? `'use client';\n\n` : '';
+  const propsType = isTS ? `\ninterface ${name}FormProps {}\n` : '';
+  const fcType = isTS ? `: React.FC<${name}FormProps>` : '';
+  const typeBlock = isTS ? `\n  interface ${name}Data {\n    // Add field types here\n  }\n` : '';
+  const stateType = isTS ? `<${name}Data>` : '';
+  const styleImport = isTailwind ? '' : `import styles from './${name}Form.module.${styleExt}';\n`;
+  const formClass = isTailwind ? `className="space-y-4"` : `className={styles.form}`;
+
+  const content = `${useClient}import React, { useState } from 'react';\n${styleImport}${propsType}\nconst ${name}Form${fcType} = () => {${typeBlock}\n  const [formData, setFormData] = useState${stateType}({});\n\n  const handleSubmit = (e: React.FormEvent) => {\n    e.preventDefault();\n    // Handle form submission\n  };\n\n  return (\n    <form ${formClass} onSubmit={handleSubmit}>\n      {/* Add form fields here */}\n      <button type="submit">Submit</button>\n    </form>\n  );\n};\n\nexport default ${name}Form;\n`;
+
+  const files = {
+    [`${name}Form.${ext}`]: content,
+    [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}Form';\n`,
+  };
+  if (!isTailwind) files[`${name}Form.module.${styleExt}`] = `.form {}\n`;
+
+  return { files, resolvedName: `${name}Form` };
+}
+
+// ── Modal template ────────────────────────────────────────────────────────────
+
+function modalTemplate(name, config) {
+  if (name.endsWith('Modal')) name = name.slice(0, -5);
+  const isTS = config.language === 'typescript';
+  const isTailwind = config.styling === 'tailwind';
+  const styleExt = config.styling === 'scss' ? 'scss' : 'css';
+
+  if (config.framework === 'vue' || config.framework === 'nuxt') {
+    const scriptLang = isTS ? ` lang="ts"` : '';
+    const styleBlock = isTailwind ? '' : `\n<style scoped>\n.modal-overlay {}\n.modal {}\n</style>\n`;
+    const content = `<script setup${scriptLang}>\nconst props = defineProps<{ isOpen: boolean }>();\nconst emit = defineEmits<{ close: [] }>();\n</script>\n\n<template>\n  <Teleport to="body">\n    <div v-if="props.isOpen" class="modal-overlay" @click="emit('close')">\n      <div class="modal" @click.stop>\n        <!-- Modal content -->\n        <button @click="emit('close')">Close</button>\n      </div>\n    </div>\n  </Teleport>\n</template>${styleBlock}`;
+    return { files: { [`${name}Modal.vue`]: content, [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}Modal.vue';\n` }, resolvedName: `${name}Modal` };
+  }
+
+  if (config.framework === 'svelte') {
+    const scriptLang = isTS ? ` lang="ts"` : '';
+    const content = `<script${scriptLang}>\n  interface ${name}ModalProps { isOpen: boolean; onClose: () => void; }\n  let { isOpen, onClose }: ${name}ModalProps = $props();\n</script>\n\n{#if isOpen}\n<div class="modal-overlay" on:click={onClose} role="dialog" aria-modal="true">\n  <div class="modal" on:click|stopPropagation>\n    <!-- Modal content -->\n    <button on:click={onClose}>Close</button>\n  </div>\n</div>\n{/if}\n\n<style>\n  .modal-overlay {}\n  .modal {}\n</style>`;
+    return { files: { [`${name}Modal.svelte`]: content }, resolvedName: `${name}Modal` };
+  }
+
+  if (config.framework === 'solidjs') {
+    const ext = isTS ? 'tsx' : 'jsx';
+    const content = `import { Component, Show } from 'solid-js';\n${isTS ? `\ninterface ${name}ModalProps {\n  isOpen: boolean;\n  onClose: () => void;\n}\n` : ''}\nconst ${name}Modal${isTS ? ': Component<' + name + 'ModalProps>' : ''} = (props) => (\n  <Show when={props.isOpen}>\n    <div class="modal-overlay" onClick={props.onClose}>\n      <div class="modal" onClick={(e) => e.stopPropagation()}>\n        {/* Modal content */}\n        <button onClick={props.onClose}>Close</button>\n      </div>\n    </div>\n  </Show>\n);\n\nexport default ${name}Modal;\n`;
+    return { files: { [`${name}Modal.${ext}`]: content, [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}Modal';\n` }, resolvedName: `${name}Modal` };
+  }
+
+  if (config.framework === 'angular') {
+    const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+    const tsContent = `import { Component, Input, Output, EventEmitter } from '@angular/core';\nimport { CommonModule } from '@angular/common';\n\n@Component({\n  selector: 'app-${selector}-modal',\n  standalone: true,\n  imports: [CommonModule],\n  templateUrl: './${selector}-modal.component.html',\n})\nexport class ${name}ModalComponent {\n  @Input() isOpen = false;\n  @Output() closeModal = new EventEmitter<void>();\n}\n`;
+    const htmlContent = `<div *ngIf="isOpen" class="modal-overlay" (click)="closeModal.emit()">\n  <div class="modal" (click)="$event.stopPropagation()">\n    <!-- Modal content -->\n    <button (click)="closeModal.emit()">Close</button>\n  </div>\n</div>\n`;
+    return { files: { [`${selector}-modal.component.ts`]: tsContent, [`${selector}-modal.component.html`]: htmlContent, [`index.ts`]: `export { ${name}ModalComponent } from './${selector}-modal.component';\n` }, resolvedName: `${name}ModalComponent` };
+  }
+
+  if (config.framework === 'astro') {
+    const content = `---\ninterface Props { isOpen?: boolean; }\nconst { isOpen = false } = Astro.props;\n---\n\n{isOpen && (\n  <div class="modal-overlay">\n    <div class="modal">\n      <!-- Modal content -->\n      <slot />\n    </div>\n  </div>\n)}\n\n<style>\n  .modal-overlay {}\n  .modal {}\n</style>\n`;
+    return { files: { [`${name}Modal.astro`]: content }, resolvedName: `${name}Modal` };
+  }
+
+  // React / Next.js / Remix
+  const ext = isTS ? 'tsx' : 'jsx';
+  const useClient = config.framework === 'nextjs' && config.useClient ? `'use client';\n\n` : '';
+  const propsType = isTS ? `\ninterface ${name}ModalProps {\n  isOpen: boolean;\n  onClose: () => void;\n}\n` : '';
+  const fcType = isTS ? `: React.FC<${name}ModalProps>` : '';
+  const propsArg = isTS ? `{ isOpen, onClose }: ${name}ModalProps` : `{ isOpen, onClose }`;
+  const styleImport = isTailwind ? '' : `import styles from './${name}Modal.module.${styleExt}';\n`;
+  const overlayClass = isTailwind ? `className="fixed inset-0 bg-black/50 flex items-center justify-center"` : `className={styles.overlay}`;
+  const modalClass = isTailwind ? `className="bg-white rounded-lg p-6 max-w-md w-full"` : `className={styles.modal}`;
+
+  const content = `${useClient}import React from 'react';\n${styleImport}${propsType}\nconst ${name}Modal${fcType} = (${propsArg}) => {\n  if (!isOpen) return null;\n  return (\n    <div ${overlayClass} onClick={onClose}>\n      <div ${modalClass} onClick={(e) => e.stopPropagation()}>\n        {/* Modal content */}\n        <button onClick={onClose}>Close</button>\n      </div>\n    </div>\n  );\n};\n\nexport default ${name}Modal;\n`;
+
+  const files = {
+    [`${name}Modal.${ext}`]: content,
+    [`index.${isTS ? 'ts' : 'js'}`]: `export { default } from './${name}Modal';\n`,
+  };
+  if (!isTailwind) files[`${name}Modal.module.${styleExt}`] = `.overlay {}\n.modal {}\n`;
+
+  return { files, resolvedName: `${name}Modal` };
+}
+
+// ── Provider template (React, Remix, SolidJS) ─────────────────────────────────
+
+function providerTemplate(name, config) {
+  if (name.endsWith('Provider')) name = name.slice(0, -8);
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'tsx' : 'jsx';
+
+  if (config.framework === 'solidjs') {
+    const content = `import { createContext, useContext, ParentComponent } from 'solid-js';\n${isTS ? `\ninterface ${name}ContextValue {\n  // Add context value shape here\n}\n` : ''}\nconst ${name}Context = createContext${isTS ? `<${name}ContextValue | undefined>` : ''}();\n\nexport const ${name}Provider: ParentComponent = (props) => {\n  const value${isTS ? `: ${name}ContextValue` : ''} = {\n    // Add values here\n  };\n\n  return (\n    <${name}Context.Provider value={value}>\n      {props.children}\n    </${name}Context.Provider>\n  );\n};\n\nexport function use${name}() {\n  const ctx = useContext(${name}Context);\n  if (!ctx) throw new Error('use${name} must be used within ${name}Provider');\n  return ctx;\n}\n`;
+    return { files: { [`${name}Provider.${ext}`]: content, [`index.${isTS ? 'ts' : 'js'}`]: `export { ${name}Provider, use${name} } from './${name}Provider';\n` }, resolvedName: `${name}Provider` };
+  }
+
+  // React / Next.js / Remix
+  const useClient = config.framework === 'nextjs' ? `'use client';\n\n` : '';
+  const content = `${useClient}import React, { createContext, useContext, useState } from 'react';\n${isTS ? `\ninterface ${name}ContextValue {\n  // Add context value shape here\n}\n` : ''}\nconst ${name}Context = React.createContext${isTS ? `<${name}ContextValue | null>` : ''}(null);\n\nexport function ${name}Provider({ children }${isTS ? ': { children: React.ReactNode }' : ''}) {\n  // Add state here\n  const value${isTS ? `: ${name}ContextValue` : ''} = {\n    // Add values here\n  };\n\n  return (\n    <${name}Context.Provider value={value}>\n      {children}\n    </${name}Context.Provider>\n  );\n}\n\nexport function use${name}() {\n  const ctx = useContext(${name}Context);\n  if (!ctx) throw new Error('use${name} must be used within ${name}Provider');\n  return ctx;\n}\n`;
+
+  return {
+    files: {
+      [`${name}Provider.${ext}`]: content,
+      [`index.${isTS ? 'ts' : 'js'}`]: `export { ${name}Provider, use${name} } from './${name}Provider';\n`,
+    },
+    resolvedName: `${name}Provider`,
+  };
+}
+
+// ── Route template (Next.js, Nuxt, Remix, Astro) ──────────────────────────────
+
+function routeTemplate(name, config) {
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'tsx' : 'jsx';
+  const scriptExt = isTS ? 'ts' : 'js';
+  const isTailwind = config.styling === 'tailwind';
+  const bodyClass = isTailwind ? `className="container"` : `className="page"`;
+
+  if (config.framework === 'nuxt') {
+    const scriptLang = isTS ? ` lang="ts"` : '';
+    const content = `<script setup${scriptLang}>\n// ${name} page\n</script>\n\n<template>\n  <div class="page">\n    <h1>${name}</h1>\n    <NuxtLayout>\n      <!-- Page content -->\n    </NuxtLayout>\n  </div>\n</template>\n`;
+    return { files: { [`${name}.vue`]: content }, resolvedName: name };
+  }
+
+  if (config.framework === 'sveltekit') {
+    const scriptLang = isTS ? ` lang="ts"` : '';
+    const pageContent = `<script${scriptLang}>\n  import type { PageData } from './$types';\n  export let data${isTS ? ': PageData' : ''};\n</script>\n\n<div class="page">\n  <h1>${name}</h1>\n</div>\n`;
+    const serverContent = `${isTS ? "import type { PageServerLoad } from './$types';\n\nexport const load: PageServerLoad = async ({ params }) => {\n  return {};\n};\n" : "export const load = async ({ params }) => {\n  return {};\n};\n"}`;
+    return { files: { '+page.svelte': pageContent, [`+page.server.${scriptExt}`]: serverContent }, resolvedName: name };
+  }
+
+  if (config.framework === 'qwik') {
+    const content = `import { component$ } from '@builder.io/qwik';\nimport type { DocumentHead } from '@builder.io/qwik-city';\n\nexport default component$(() => {\n  return (\n    <div class="page">\n      <h1>${name}</h1>\n    </div>\n  );\n});\n\nexport const head: DocumentHead = { title: '${name}' };\n`;
+    return { files: { [`index.${ext}`]: content }, resolvedName: name };
+  }
+
+  if (config.framework === 'expo') {
+    const content = `import { View, Text } from 'react-native';\n\nexport default function ${name}Screen() {\n  return (\n    <View>\n      <Text>${name}</Text>\n    </View>\n  );\n}\n`;
+    return { files: { [`${name.toLowerCase()}.${ext}`]: content }, resolvedName: name };
+  }
+
+  if (config.framework === 'remix') {
+    const content = `import type { MetaFunction } from '@remix-run/node';\nimport { useLoaderData } from '@remix-run/react';\n${isTS ? `import type { LoaderFunctionArgs } from '@remix-run/node';\n` : ''}\nexport const meta: MetaFunction = () => [\n  { title: '${name}' },\n];\n\nexport async function loader(${isTS ? '{ request }: LoaderFunctionArgs' : '{ request }'}) {\n  // Load data here\n  return {};\n}\n\nexport default function ${name}Route() {\n  const data = useLoaderData${isTS ? '<typeof loader>' : ''}();\n  return (\n    <div ${bodyClass}>\n      <h1>${name}</h1>\n    </div>\n  );\n}\n`;
+    return { files: { [`${name.toLowerCase()}.${ext}`]: content }, resolvedName: name };
+  }
+
+  if (config.framework === 'astro') {
+    const content = `---\n// ${name} page route\n---\n\n<html lang="en">\n  <head>\n    <meta charset="utf-8" />\n    <title>${name}</title>\n  </head>\n  <body>\n    <div class="page">\n      <h1>${name}</h1>\n    </div>\n  </body>\n</html>\n`;
+    return { files: { [`${name.toLowerCase()}.astro`]: content }, resolvedName: name };
+  }
+
+  // Next.js: page + layout + loading in one scaffold
+  const pageContent = `${isTS ? `import type { Metadata } from 'next';\n\nexport const metadata: Metadata = { title: '${name}' };\n\n` : ''}export default function ${name}Page() {\n  return (\n    <div ${bodyClass}>\n      <h1>${name}</h1>\n    </div>\n  );\n}\n`;
+  const layoutContent = `export default function ${name}Layout({ children }${isTS ? ': { children: React.ReactNode }' : ''}) {\n  return <>{children}</>;\n}\n`;
+  const loadingContent = `export default function ${name}Loading() {\n  return <div>Loading...</div>;\n}\n`;
+
+  return {
+    files: {
+      [`page.${ext}`]: pageContent,
+      [`layout.${ext}`]: layoutContent,
+      [`loading.${ext}`]: loadingContent,
+    },
+    resolvedName: name,
+  };
+}
+
 // ── Storybook ─────────────────────────────────────────────────────────────────
 
 function storyTemplate(name, config) {
@@ -1710,6 +2240,106 @@ export const Default = {};
   return { [`${name}.stories.${compExt}`]: content };
 }
 
+// ── Guard template (Angular, Next.js, generic) ────────────────────────────────
+
+function guardTemplate(name, config) {
+  if (name.endsWith('Guard')) name = name.slice(0, -5);
+  const isTS = config.language === 'typescript';
+
+  if (config.framework === 'angular') {
+    const selector = name.replace(/([A-Z])/g, (m, l, i) => (i ? '-' : '') + l.toLowerCase()).replace(/^-/, '');
+    const content = `import { inject } from '@angular/core';\nimport { CanActivateFn, Router } from '@angular/router';\n\nexport const ${selector.replace(/-([a-z])/g, (_, l) => l.toUpperCase())}Guard: CanActivateFn = (route, state) => {\n  const router = inject(Router);\n  // Add guard logic here\n  return true;\n};\n`;
+    return { files: { [`${selector}.guard.ts`]: content }, resolvedName: `${name}Guard` };
+  }
+
+  if (config.framework === 'nextjs') {
+    const ext = isTS ? 'ts' : 'js';
+    const content = `${isTS ? "import type { NextRequest } from 'next/server';\n" : ''}import { NextResponse } from 'next/server';\n\nexport async function ${name.charAt(0).toLowerCase() + name.slice(1)}Guard(${isTS ? 'request: NextRequest' : 'request'}) {\n  // Return NextResponse.redirect(new URL('/login', request.url)) when not authorized\n  return null;\n}\n`;
+    return { files: { [`${name}Guard.${ext}`]: content }, resolvedName: `${name}Guard` };
+  }
+
+  // Generic (React/Vue/Svelte/etc.) — route guard HOF
+  const ext = isTS ? 'ts' : 'js';
+  const content = `${isTS ? 'type GuardFn = (ctx: unknown) => boolean | Promise<boolean>;\n\n' : ''}export const ${name.charAt(0).toLowerCase() + name.slice(1)}Guard${isTS ? ': GuardFn' : ''} = async (ctx) => {\n  // Return false to block, true to allow\n  return true;\n};\n`;
+  return { files: { [`${name}Guard.${ext}`]: content, [`index.${ext}`]: `export * from './${name}Guard';\n` }, resolvedName: `${name}Guard` };
+}
+
+// ── Schema template (Zod by default) ──────────────────────────────────────────
+
+function schemaTemplate(name, config) {
+  if (name.endsWith('Schema')) name = name.slice(0, -6);
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const lowerName = name.charAt(0).toLowerCase() + name.slice(1);
+  const typeExport = isTS ? `\nexport type ${name} = z.infer<typeof ${lowerName}Schema>;\n` : '';
+  const content = `import { z } from 'zod';\n\nexport const ${lowerName}Schema = z.object({\n  // Add schema fields here\n});\n${typeExport}`;
+  return { files: { [`${lowerName}.schema.${ext}`]: content }, resolvedName: `${name}Schema` };
+}
+
+// ── Query template (TanStack Query) ───────────────────────────────────────────
+
+function queryTemplate(name, config) {
+  if (name.endsWith('Query')) name = name.slice(0, -5);
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const hookName = `use${name}Query`;
+
+  if (config.framework === 'vue' || config.framework === 'nuxt') {
+    const content = `import { useQuery } from '@tanstack/vue-query';\n\nexport function ${hookName}() {\n  return useQuery({\n    queryKey: ['${name.toLowerCase()}'],\n    queryFn: async () => {\n      // Fetch data here\n      return {};\n    },\n  });\n}\n`;
+    return { files: { [`${hookName}.${ext}`]: content, [`index.${ext}`]: `export * from './${hookName}';\n` }, resolvedName: hookName };
+  }
+
+  if (config.framework === 'svelte') {
+    const content = `import { createQuery } from '@tanstack/svelte-query';\n\nexport function ${hookName}() {\n  return createQuery({\n    queryKey: ['${name.toLowerCase()}'],\n    queryFn: async () => {\n      return {};\n    },\n  });\n}\n`;
+    return { files: { [`${hookName}.${ext}`]: content, [`index.${ext}`]: `export * from './${hookName}';\n` }, resolvedName: hookName };
+  }
+
+  if (config.framework === 'solidjs') {
+    const content = `import { createQuery } from '@tanstack/solid-query';\n\nexport function ${hookName}() {\n  return createQuery(() => ({\n    queryKey: ['${name.toLowerCase()}'],\n    queryFn: async () => {\n      return {};\n    },\n  }));\n}\n`;
+    return { files: { [`${hookName}.${ext}`]: content, [`index.${ext}`]: `export * from './${hookName}';\n` }, resolvedName: hookName };
+  }
+
+  // React / Next.js / Remix / default
+  const useClient = config.framework === 'nextjs' ? `'use client';\n\n` : '';
+  const responseType = isTS ? `\ninterface ${name}Data {\n  // Define response shape\n}\n` : '';
+  const typeArg = isTS ? `<${name}Data>` : '';
+  const content = `${useClient}import { useQuery } from '@tanstack/react-query';\n${responseType}\nexport function ${hookName}() {\n  return useQuery${typeArg}({\n    queryKey: ['${name.toLowerCase()}'],\n    queryFn: async () => {\n      // Fetch data here\n      const res = await fetch('/api/${name.toLowerCase()}');\n      if (!res.ok) throw new Error('Failed to fetch ${name}');\n      return res.json();\n    },\n  });\n}\n`;
+  return { files: { [`${hookName}.${ext}`]: content, [`index.${ext}`]: `export * from './${hookName}';\n` }, resolvedName: hookName };
+}
+
+// ── Mutation template (TanStack Query) ────────────────────────────────────────
+
+function mutationTemplate(name, config) {
+  if (name.endsWith('Mutation')) name = name.slice(0, -8);
+  const isTS = config.language === 'typescript';
+  const ext = isTS ? 'ts' : 'js';
+  const hookName = `use${name}Mutation`;
+
+  if (config.framework === 'vue' || config.framework === 'nuxt') {
+    const content = `import { useMutation, useQueryClient } from '@tanstack/vue-query';\n\nexport function ${hookName}() {\n  const queryClient = useQueryClient();\n  return useMutation({\n    mutationFn: async (variables${isTS ? ': unknown' : ''}) => {\n      // Perform mutation\n      return variables;\n    },\n    onSuccess: () => {\n      queryClient.invalidateQueries({ queryKey: ['${name.toLowerCase()}'] });\n    },\n  });\n}\n`;
+    return { files: { [`${hookName}.${ext}`]: content, [`index.${ext}`]: `export * from './${hookName}';\n` }, resolvedName: hookName };
+  }
+
+  // React / Next.js / Remix / default
+  const useClient = config.framework === 'nextjs' ? `'use client';\n\n` : '';
+  const varsType = isTS ? `\ninterface ${name}Vars {\n  // Define mutation variables\n}\n` : '';
+  const typeArg = isTS ? `<unknown, Error, ${name}Vars>` : '';
+  const varsArg = isTS ? `vars: ${name}Vars` : 'vars';
+  const content = `${useClient}import { useMutation, useQueryClient } from '@tanstack/react-query';\n${varsType}\nexport function ${hookName}() {\n  const queryClient = useQueryClient();\n  return useMutation${typeArg}({\n    mutationFn: async (${varsArg}) => {\n      const res = await fetch('/api/${name.toLowerCase()}', {\n        method: 'POST',\n        body: JSON.stringify(vars),\n      });\n      if (!res.ok) throw new Error('Failed to mutate ${name}');\n      return res.json();\n    },\n    onSuccess: () => {\n      queryClient.invalidateQueries({ queryKey: ['${name.toLowerCase()}'] });\n    },\n  });\n}\n`;
+  return { files: { [`${hookName}.${ext}`]: content, [`index.${ext}`]: `export * from './${hookName}';\n` }, resolvedName: hookName };
+}
+
+// ── i18n template (locale key) ────────────────────────────────────────────────
+
+function i18nTemplate(name, config) {
+  const locales = (config.locales && config.locales.length) ? config.locales : ['en'];
+  const files = {};
+  for (const locale of locales) {
+    files[`${locale}.json`] = JSON.stringify({ [name]: name }, null, 2);
+  }
+  return { files, resolvedName: name };
+}
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -1733,4 +2363,21 @@ module.exports = {
   nuxtApiTemplate,
   nuxtLayoutTemplate,
   nuxtMiddlewareTemplate,
+  angularComponentTemplate,
+  angularServiceTemplate,
+  angularStoreTemplate,
+  angularFeatureTemplate,
+  astroComponentTemplate,
+  astroPageTemplate,
+  astroUtilTemplate,
+  astroFeatureTemplate,
+  formTemplate,
+  modalTemplate,
+  providerTemplate,
+  routeTemplate,
+  guardTemplate,
+  schemaTemplate,
+  queryTemplate,
+  mutationTemplate,
+  i18nTemplate,
 };

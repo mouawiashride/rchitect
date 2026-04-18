@@ -9,9 +9,15 @@ function detectFramework(pkg) {
   const deps = { ...pkg.dependencies, ...pkg.devDependencies };
   if (deps.next) return 'nextjs';
   if (deps.nuxt) return 'nuxt';
+  if (deps['@remix-run/react'] || deps['@remix-run/node']) return 'remix';
+  if (deps['@angular/core']) return 'angular';
+  if (deps.astro) return 'astro';
+  if (deps.expo || deps['expo-router']) return 'expo';
+  if (deps['@builder.io/qwik'] || deps['@builder.io/qwik-city']) return 'qwik';
+  if (deps['@sveltejs/kit']) return 'sveltekit';
   if (deps.react) return 'react';
   if (deps.vue) return 'vue';
-  if (deps.svelte || deps['@sveltejs/kit']) return 'svelte';
+  if (deps.svelte) return 'svelte';
   if (deps['solid-js']) return 'solidjs';
   return null;
 }
@@ -97,7 +103,7 @@ async function importCommand() {
   // 2. Detect everything
   const framework = detectFramework(pkg);
   if (!framework) {
-    console.log(chalk.red('  Error: Could not detect a supported framework (React, Next.js, Vue, Nuxt, Svelte, SolidJS) in package.json.\n'));
+    console.log(chalk.red('  Error: Could not detect a supported framework (React, Next.js, Vue, Nuxt, Svelte, SolidJS, Remix, Angular, Astro) in package.json.\n'));
     process.exit(1);
   }
 
@@ -110,7 +116,7 @@ async function importCommand() {
 
   // 3. Display what was detected
   console.log(chalk.bold('  Detected configuration:\n'));
-  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS', nuxt: 'Nuxt 3' };
+  const frameworkLabels = { react: 'React', nextjs: 'Next.js', vue: 'Vue 3', svelte: 'Svelte', solidjs: 'SolidJS', nuxt: 'Nuxt 3', remix: 'Remix', angular: 'Angular', astro: 'Astro' };
   console.log(`  ${chalk.gray('framework')}   ${chalk.cyan(frameworkLabels[framework] || framework)}`);
   console.log(`  ${chalk.gray('pattern')}     ${chalk.cyan(pattern)}`);
   console.log(`  ${chalk.gray('language')}    ${chalk.cyan(language)}`);
